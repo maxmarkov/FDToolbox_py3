@@ -2,8 +2,8 @@ from numpy import *
 
 
 #from fdtoolbox.utility import *
-from fdtoolbox.atomic.atomic_set import atomic_set
-from fdtoolbox.atomic.utility import loggable
+#from fdtoolbox.atomic.atomic_set import atomic_set
+#from fdtoolbox.atomic.utility import loggable
 
 import os
 import atexit
@@ -352,15 +352,6 @@ class calculation(atomic_set):
   #  
   #magnetization = property( get__magnetization, None )
     
-    
-  def load_from_poscar(self, filename):
-    """
-    Loads the system from POSCAR. Obviously, everything except for atomic positions is missing.
-    """
-    atomic_set.load_from_poscar(self, filename)
-    self.forces = zeros(self.atoms.shape)
-    self.energy = 0
-          
   #def force(self, mode = 'ion'):
   #  """
   #  Return forces acting on 'ion's, 'lat'tice, or 'all' of them, flattened to one long vector.

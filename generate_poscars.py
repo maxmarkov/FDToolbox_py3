@@ -60,6 +60,9 @@ if __name__ == '__main__':
     parser.add_argument('--disp_lattice', type=float, default='0.000', help='Magnitude of lattice vectors displacements')
     opt = parser.parse_args()
 
+    # customize the default settings for INCAR file
+    user_incar_custom = {"ALGO":"Normal","LDAUU":{"Eu":6.0},"LDAUL":{"Eu":3},"EDIFF":5e-8,"LWAVE":False,"LVHAR":False,"LAECHG":False,"NPAR":4,"ICHARG":2} 
+
     if os.path.isfile(opt.filename) == False:
        sys.exit('Correct path to a structure POSCAR/cif file must be provided after --filename')
     
@@ -72,4 +75,4 @@ if __name__ == '__main__':
           pass
         structure.to(fmt='POSCAR', filename='/'.join( [name, 'POSCAR']))
         print(name)
-    #MPStaticSet(calc.structure, user_incar_settings={"ALGO":"Normal","LDAUU":{"Eu":6.0},"LDAUL":{"Eu":3},"EDIFF":5e-8,"LWAVE":False,"LVHAR":False,"LAECHG":False,"NPAR":4,"ICHARG":2}).write_input(name)
+        #MPStaticSet(structure, user_incar_custom).write_input(name)
