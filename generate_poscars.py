@@ -1,87 +1,75 @@
 #!/usr/bin/env python
 
-import numpy as np
-
 import copy
 import sys
 import os
-import shutil
+import numpy as np
+import argparse
 
-sys.path.append(os.path.join(sys.path[0],'../'))
-from fdtoolbox.calculation_set import calculation
-from pymatgen.io.vasp.sets import MPStaticSet
+#from pymatgen.io.vasp.sets import MPStaticSet
+from pymatgen.transformations.site_transformations import TranslateSitesTransformation
+from pymatgen.core.structure import Structure
 
-disp_length = [0.005, 0.005, 0.005]
-lat_disp_length = [0.01, 0.01, 0.01]
-
-def move_all_atoms(calc):
-  yield 'calc_00_0', calc
-  for numat, at in enumerate(calc.atoms):
+def move_all_atoms(structure, disp_ion):
+  yield 'calc_00_0', structure
+  print(structure.lattice)
+  if disp_ion == 0.:
+     print("Ionic displacement is zero. Only the reference structure is returned.\n") 
+     return
+  atoms = [i for i in range(len(structure))]
+  for atom in atoms:
     for direction in range(3):
-      displacement = np.zeros((1,3))
-      displacement[0, direction] = disp_length[direction % len(disp_length)]
+      displacement = [0.]*3
+      displacement[direction] = disp_ion
       
       for orientation in ['+', '-']:
-        c = copy.deepcopy(calc)
-        c.atoms[numat] += np.squeeze(displacement)
-        yield 'calc_%02d_%s%d' % (numat+1, orientation, direction+1), c
-      
-        displacement *= -1
+         transform = TranslateSitesTransformation([atom], displacement, vector_in_frac_coords=True)
+         structure_displaced = transform.apply_transformation(structure)
+         yield 'calc_%02d_%s%d' % (atom+1, orientation, direction+1), structure_displaced      
+         displacement[direction] = -displacement[direction]
 
-def move_all_lattice(calc):
+def move_all_lattice(structure, disp_lattice):
+  if disp_lattice == 0.:
+     print("Lattice displacement is zero. Strain contribution won't be computed.\n")
+     return
   for axnum, axname in enumerate(['a', 'b', 'c']):
     for dirnum, dirname in enumerate(['X', 'Y', 'Z']):
-      displacement = np.zeros((1,3))
-      displacement[0, dirnum] = lat_disp_length[dirnum % len(lat_disp_length)]
-      for orientation in ['+', '-']:
-        c = copy.deepcopy(calc)
-        c.unit_cell[axnum] += np.squeeze(displacement)
-        c.atoms = np.dot( calc.atoms, np.dot( np.linalg.inv( calc.unit_cell ), c.unit_cell ) )
-        yield 'calc_00_%s%s%s' % (axname, orientation, dirname), c
-      
-        displacement *= -1
+      lattice_matrix = copy.deepcopy(structure.lattice.matrix)
+      lattice_matrix[axnum, dirnum] += disp_lattice
+      print(axname, dirname)
+      print(lattice_matrix)
+#      for orientation in ['+', '-']:
+#        c = copy.deepcopy(calc)
+#        c.unit_cell[axnum] += np.squeeze(displacement)
+#        c.atoms = np.dot( calc.atoms, np.dot( np.linalg.inv( calc.unit_cell ), c.unit_cell ) )
+#        yield 'calc_00_%s%s%s' % (axname, orientation, dirname), c
+#      
+#        displacement[dirnum] = -displacement[dirnum]
 
-def generate_all_calcs(calc):
-  for name, c in move_all_atoms(calc):
+def generate_all_calcs(structure, disp_ion, disp_lattice):
+  for name, c in move_all_atoms(structure, disp_ion):
     yield name, c
-  for name, c in move_all_lattice(calc):
-    yield name, c
+  move_all_lattice(structure, disp_lattice)
+#  for name, c in move_all_lattice(structure, disp_lattice):
+#    yield name, c
 
-# sys.argv is a list, which contains the command-line arguments passed to the script.
-print(sys.argv)
-if len(sys.argv) < 2:
-  name = (sys.argv[0].split('/'))[-1]
-  msg = ('{sep}Usage:{sep}'
-         '{x} filename ion_displacement_lengths lattice_displacement_lengths{sep}'
-         '  filename - name of the POSCAR/CONTCAR file containing optimised system{sep}'
-         '  ion_displacement_lengths - ion displacement in angstroms single value for uniform displacement, or quoted triplet of values{sep}'
-         '  lattice_displacement_lengths - same as ion_displacement_lengths but for lattice vectors{sep}{sep}'
-         'Example:{sep}'
-         '{x} ./POSCAR 0.005 "0.01 0.01 0.05"{sep}'.format(x=name, sep='\n'))
-  print(msg) 
-  sys.exit()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--filename', type=str, default='POSCAR', help='File with original structure. POSCAR or cif formats')
+    parser.add_argument('--disp_ion', type=float, default='0.005', help='Magnitude of ionic displacement')
+    parser.add_argument('--disp_lattice', type=float, default='0.000', help='Magnitude of lattice vectors displacements')
+    opt = parser.parse_args()
 
-system = calculation()
-system.load_from_poscar(sys.argv[1])
+    if os.path.isfile(opt.filename) == False:
+       sys.exit('Correct path to a structure POSCAR/cif file must be provided after --filename')
+    
+    structure = Structure.from_file(opt.filename)
 
-
-if len(sys.argv) > 2:
-  disp_length = [ float(d) for d in sys.argv[2].split() ]
-
-if len(sys.argv) > 3:
-  lat_disp_length = [ float(d) for d in sys.argv[3].split() ]
-
-generator = generate_all_calcs
-if max(disp_length) == 0.:
-  generator = move_all_lattice
-if max(lat_disp_length) == 0.:
-  generator = move_all_atoms
-
-for name, calc in generator(system):
-  try:
-    os.mkdir(name)
-  except:
-    pass
-  calc.save_to_poscar('/'.join( [name, 'POSCAR'] ))
-#  MPStaticSet(calc.structure, user_incar_settings={"ALGO":"Normal","LDAUU":{"Eu":6.0},"LDAUL":{"Eu":3},"EDIFF":5e-8,"LWAVE":False,"LVHAR":False,"LAECHG":False,"NPAR":4,"ICHARG":2}).write_input(name)
-  print(name)
+    for name, structure_displaced in generate_all_calcs(structure, opt.disp_ion, opt.disp_lattice):
+        try:
+          os.mkdir(name)
+        except:
+          pass
+        structure.to(fmt='POSCAR', filename='/'.join( [name, 'POSCAR']))
+        print(name)
+    #MPStaticSet(calc.structure, user_incar_settings={"ALGO":"Normal","LDAUU":{"Eu":6.0},"LDAUL":{"Eu":3},"EDIFF":5e-8,"LWAVE":False,"LVHAR":False,"LAECHG":False,"NPAR":4,"ICHARG":2}).write_input(name)
