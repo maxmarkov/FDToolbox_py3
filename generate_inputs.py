@@ -3,12 +3,12 @@
 import copy
 import sys
 import os
-import numpy as np
 import argparse
 
 #from pymatgen.io.vasp.sets import MPStaticSet
 from pymatgen.transformations.site_transformations import TranslateSitesTransformation
 from pymatgen.core.structure import Structure
+from pymatgen.core.lattice import Lattice
 
 def move_all_atoms(structure, disp_ion):
   yield 'calc_00_0', structure
@@ -34,24 +34,17 @@ def move_all_lattice(structure, disp_lattice):
      return
   for axnum, axname in enumerate(['a', 'b', 'c']):
     for dirnum, dirname in enumerate(['X', 'Y', 'Z']):
-      lattice_matrix = copy.deepcopy(structure.lattice.matrix)
-      lattice_matrix[axnum, dirnum] += disp_lattice
-      print(axname, dirname)
-      print(lattice_matrix)
-#      for orientation in ['+', '-']:
-#        c = copy.deepcopy(calc)
-#        c.unit_cell[axnum] += np.squeeze(displacement)
-#        c.atoms = np.dot( calc.atoms, np.dot( np.linalg.inv( calc.unit_cell ), c.unit_cell ) )
-#        yield 'calc_00_%s%s%s' % (axname, orientation, dirname), c
-#      
-#        displacement[dirnum] = -displacement[dirnum]
+      for orientation in ['+', '-']:
+         structure_displaced = copy.deepcopy(structure)
+         structure_displaced.lattice.matrix[axnum, dirnum] += disp_lattice
+         yield 'calc_00_%s%s%s' % (axname, orientation, dirname), structure_displaced
+         disp_lattice = -disp_lattice
 
 def generate_all_calcs(structure, disp_ion, disp_lattice):
   for name, c in move_all_atoms(structure, disp_ion):
     yield name, c
-  move_all_lattice(structure, disp_lattice)
-#  for name, c in move_all_lattice(structure, disp_lattice):
-#    yield name, c
+  for name, c in move_all_lattice(structure, disp_lattice):
+    yield name, c
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -73,6 +66,6 @@ if __name__ == '__main__':
           os.mkdir(name)
         except:
           pass
-        structure.to(fmt='POSCAR', filename='/'.join( [name, 'POSCAR']))
+        structure_displaced.to(fmt='POSCAR', filename='/'.join( [name, 'POSCAR']))
         print(name)
         #MPStaticSet(structure, user_incar_custom).write_input(name)
