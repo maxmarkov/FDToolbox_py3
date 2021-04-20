@@ -26,13 +26,13 @@ def generate_submit_manneback(folders, nprocs = 16, path_to_exec="/home/ucl/modl
 
     'export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK\n\n'
 
-    'MPIRUN=""srun""\n'
-    'MPIOPT=""--mpi=pmi2 -K1 -n $SLURM_NTASKS""\n'
+    'MPIRUN="srun"\n'
+    'MPIOPT="--mpi=pmi2 -K1 -n $SLURM_NTASKS"\n'
     'VASP='+path_to_exec+'\n\n'
 
     '${MPIRUN} ${MPIOPT} ${VASP}\n\n'
 
-    'echo ""--""')
+    'echo "--"')
 
     for folder in folders:
         with open(os.path.join(folder, 'submit.job'), 'w') as writer:
