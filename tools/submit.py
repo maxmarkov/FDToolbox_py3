@@ -1,6 +1,6 @@
 import os
 
-def generate_submit_manneback(folders, nprocs = 16, path_to_exec="/home/ucl/modl/mmarkov/soft/vasp/vasp.5.4.1_couplageEM/bin/vasp_std"):
+def generate_submit_manneback(folders, subfolder='', nprocs = 16, path_to_exec="/home/ucl/modl/mmarkov/soft/vasp/vasp.5.4.1_couplageEM/bin/vasp_std"):
     """
     Generate submit file for Manneback cluster
     """
@@ -35,5 +35,8 @@ def generate_submit_manneback(folders, nprocs = 16, path_to_exec="/home/ucl/modl
     'echo "--"')
 
     for folder in folders:
+        if len(subfolder) > 0:
+           folder = os.path.join(folder, subfolder)
         with open(os.path.join(folder, 'submit.job'), 'w') as writer:
            writer.write(submit_string)
+        #break

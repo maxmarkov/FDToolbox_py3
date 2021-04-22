@@ -8,6 +8,7 @@ import shutil
 
 from pymatgen.io.vasp.sets import MPStaticSet, MPSOCSet
 from pymatgen.io.vasp.outputs import Outcar
+from pymatgen.io.vasp.inputs import Incar
 from pymatgen.transformations.site_transformations import TranslateSitesTransformation
 from pymatgen.core.structure import Structure
 from pymatgen.core.lattice import Lattice
@@ -74,8 +75,8 @@ def generate_old_polarization_folders(structures):
             # compute the Berry phase along the x-i, y- and z-directions (IGPAR = 1,2,3)
             # Note: calculations usualy are very sensetive to the choice of "NPPSTR" parameter. You might consider to reduce it.
             MPStaticSet.from_prev_calc(name, user_incar_settings={"LBERRY":True,"IGPAR":i+1,"ICHARG":2,"NPAR":2,"ALGO":"Fast","NPPSTR":6,"LAECHG":False,"LVHAR":False, "ISIF": 2}, user_kpoints_settings={"reciprocal_density": 500}).write_input(os.path.join(name,'Berry_'+str(i+1)))
-            #shutil.copy(os.path.join(name,'CHGCAR'), os.path.join(name,'Berry_'+str(i+1)))
-        break
+            shutil.copy(os.path.join(name,'CHGCAR'), os.path.join(name,'Berry_'+str(i+1)))
+        #break
 
 def generate_new_polarization_folders(structures):
     """
@@ -83,8 +84,8 @@ def generate_new_polarization_folders(structures):
     """
     for name in structures:
         MPStaticSet.from_prev_calc(name, user_incar_settings={"LCALCPOL":True,"LAECHG":False,"LVHAR":False, "ISIF": 2}, user_kpoints_settings={"reciprocal_density": 500}).write_input(os.path.join(name,'Berry_new'))
-        #shutil.copy(os.path.join(name,'CHGCAR'), os.path.join(name,'Berry_'+str(i+1)))
-        break
+        shutil.copy(os.path.join(name,'CHGCAR'), os.path.join(name,'Berry_new'))
+        #break
 
 def generate_nscf_soc_folders(structures, saxis, user_incar):
     """
@@ -98,8 +99,14 @@ def generate_nscf_soc_folders(structures, saxis, user_incar):
         # geterate calculation from the MPSOCSet 
         mpsoc = MPSOCSet(structures[name], saxis=saxis, user_incar_settings=user_incar, user_kpoints_settings={"reciprocal_density": 500})
         mpsoc.write_input(os.path.join(name,'nscf_SOC'))
+
+        # walk around the bug in MPSICSet to introduce LDAUU and LDAUL into INCAR
+        dic=mpsoc.incar.as_dict()
+        dic["LDAUU"]= list(dic["LDAUU"].values())
+        dic["LDAUL"]= list(dic["LDAUL"].values())
+        Incar.from_dict(dic).write_file(os.path.join(name,'nscf_SOC/INCAR'))
         shutil.copy(os.path.join(name,'CHGCAR'), os.path.join(name,'nscf_SOC'))
-        break
+        #break
 
 
 
@@ -186,7 +193,7 @@ class FDTcalculations(object):
         """
         Generate folders with non self-consistent calculations with spin-orbit coupling
         """
-        user_incar={"ICHARG":1, "ALGO":"Normal", "EDIFF":5e-8, "NELMDL":15, "LCHARG":False, "LWAVE":False, "LVHAR":False, "LAECHG":False, "NPAR":2, "LREAL":False, "ISYM":-1, "ISIF": 2}
+        user_incar={"ICHARG":11, "ALGO":"Normal", "EDIFF":5e-8, "NELMDL":15, "LCHARG":False, "LWAVE":False, "LVHAR":False, "LAECHG":False, "NPAR":2, "LREAL":True, "ISIF": 2}#, "ISYM":-1}
         if len(self.structures_ion) > 0:
            generate_nscf_soc_folders(self.structures_ion, saxis, {**user_incar, **user_incar_custom})
         if len(self.structures_lattice) > 0:
@@ -201,7 +208,7 @@ class FDTcalculations(object):
 #fdt.generate_scf(user_incar=user_incar_scf_custom)
 
 #folders = list(fdt.structures_ion.keys())
-#generate_submit_manneback(folders, nprocs = 16, path_to_exec="/home/ucl/modl/mmarkov/soft/vasp/vasp.5.4.1_couplageEM/bin/vasp_std")
+#generate_submit_manneback(folders, subfolder='', nprocs = 16, path_to_exec="/home/ucl/modl/mmarkov/soft/vasp/vasp.5.4.1_couplageEM/bin/vasp_std")
 
 
 ####         STEP 2           ###
@@ -210,10 +217,15 @@ fdt = FDTcalculations(filename='/home/ucl/modl/mmarkov/soft/FDToolbox_py3_dev/TE
 scf_completed = fdt.check_scf()
 print('All SCF calculations completed succesfully? ', scf_completed)
 
-user_incar_nscf_custom = {"LDAUU":{"Eu":6.0},"LDAUL":{"Eu":3, "Sb":-1, "O":-1}}
+user_incar_nscf_custom = {"LDAUU":{"Eu":6, "Sb": 0, "O": 0},"LDAUL":{"Eu":3, "Sb":-1, "O":-1}}
 saxis = (0,0,1)
 
 if scf_completed:
    fdt.generate_old_polarization()
    fdt.generate_new_polarization()
    fdt.generate_nscf_soc(saxis, user_incar_nscf_custom)
+
+   folders = list(fdt.structures_ion.keys()) + list(fdt.structures_lattice.keys())
+   for subfolder in ['Berry_1','Berry_2','Berry_3','Berry_new']:
+       generate_submit_manneback(folders, subfolder=subfolder, nprocs = 16, path_to_exec="/home/ucl/modl/mmarkov/soft/vasp/vasp.5.4.1_couplageEM/bin/vasp_std")
+   generate_submit_manneback(folders, subfolder='nscf_SOC', nprocs = 16, path_to_exec="/home/ucl/modl/mmarkov/soft/vasp/vasp.5.4.1_couplageEM/bin/vasp_ncl")
