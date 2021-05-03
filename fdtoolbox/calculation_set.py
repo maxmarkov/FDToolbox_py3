@@ -1,20 +1,22 @@
-from numpy import *
+import numpy as np
+from pymatgen.io.vasp.outputs import Outcar, Vasprun
+from pymatgen.core.periodic_table import Element
 
-
-#from fdtoolbox.utility import *
+from fdtoolbox.utility import *
 #from fdtoolbox.atomic.atomic_set import atomic_set
 #from fdtoolbox.atomic.utility import loggable
 
 import os
 import atexit
 import re
+import sys
 try:
   import gzip
   have_gzip = True
 except:
   have_gzip = False
 
-class calculation(atomic_set):
+class calculation():
   """
   A class for keeping all data read from OUTCAR for a single calculation. It reads the following
   properties of the calculation and stores them in the following attributes:
@@ -164,171 +166,134 @@ class calculation(atomic_set):
     
 
 
-  #def load_from_outcar(self, filename):
-  #  """
-  #  This function reads atom positions, unit cell, forces and stress tensor from the VASP
-  #  OUTCAR file
-  #  """
-  #  if os.access(filename, os.R_OK):
-  #    F=file(filename)
-  #  elif have_gzip and os.access(filename+'.gz', os.R_OK):
-  #    F=gzip.open(filename+'.gz')
-  #  else:
-  #    raise Exception("Missing file")
-  #    self.debug('Could not read %s' % filename, LOG_ERROR)
-  #    
-  #  self._temporary_species = []
-  #  
-  #  line=" "
-  #  while line:
-  #    line = F.readline()
-  #    if line.startswith("   number of dos"): 
-  #      #   number of dos      NEDOS =    301   number of ions     NIONS =     10
-  #      data = line.split()
-  #      self.num_atoms = int(data[-1])
-  #    elif line.startswith(" POSITION"):
-  #      # POSITION                                       TOTAL-FORCE (eV/Angst)
-  #      # -----------------------------------------------------------------------------------
-  #      #     -0.00003     -0.00002      0.07380         0.000005      0.000005     -0.000031
-  #      #      0.00003     -0.00002      6.85381         0.000003      0.000006     -0.000031
-  #      F.readline()
-  #      #data = fromfile( F, dtype('float'), 6*self.num_atoms, ' ' ).reshape((self.num_atoms,6))
-  #      data = zeros((self.num_atoms,6))
-  #      for i in range(self.num_atoms):
-  #        data[i,:] = [float(val) for val in F.readline().split() ]
-  #      
-  #      self.atoms  = mat(data[:,0:3])
-  #      self.forces = mat(data[:,3:6])
-  #    elif line.startswith(" number of electron"):
-  #      # number of electron   94.0000001 magnetization    0.0000060  -0.0364612   0.0000000
-  #      data=line.split()
-  #      self.__magnetization = mat(zeros((1,3)))
-  #      if len(data) == 8:
-  #        self.__magnetization[0,0]=float(data[5])
-  #        self.__magnetization[0,1]=float(data[6])
-  #        self.__magnetization[0,2]=float(data[7])
-  #      elif len(data) == 6:
-  #        self.debug("Only collinear magnetization available", LOG_WARNING)
-  #        self.__magnetization[0,2]=float(data[5])
-  #      else:
-  #        self.debug("No magnetization available", LOG_WARNING)
+  def load_from_outcar(self, filename, structure):
+    """
+    This function reads atom positions, unit cell, forces and stress tensor from the VASP
+    OUTCAR file
+    """
+    print(filename[:-6]+'nscf_SOC/OUTCAR')
+    filename = filename[:-6]+'nscf_SOC/OUTCAR'
+    print(filename)
+    if os.access(filename, os.R_OK):
+      F=open(filename, "r")
+      outcar = Outcar(filename)
+    else:
+      raise Exception("Missing file")
+      
+    self._temporary_species = []
+    self.name = 'rr'
+ 
+    # ATOMIC PROPERTIES
+    self.num_atoms = int(structure.composition.num_atoms)
+    self.atoms_frac = structure.frac_coords
+    self.atoms_cart = structure.cart_coords
+    self.num_per_type = [int(x) for x in structure.composition.get_el_amt_dict().values()]
+    self.species = [x.symbol for x in structure.species]
+    self.pomass = [Element(x.symbol).atomic_mass for x in structure.species]
+    self.charges = [x['tot'] for x in outcar.charge]
+    
+    # read zval dict and create a mapping 
+    outcar.read_pseudo_zval()
+    zval_dict = outcar.zval_dict
+    self.zvals = [zval_dict[x.symbol] for x in structure.species]
 
-  #    elif line.startswith(" VOLUME and BASIS"):
-  #      # VOLUME and BASIS-vectors are now :
-  #      # -----------------------------------------------------------------------------
-  #      #  energy-cutoff  :      500.00
-  #      #  volume of cell :      118.77
-  #      #      direct lattice vectors                 reciprocal lattice vectors
-  #      #     0.000000641  3.180190650  4.520060784    -0.000000095  0.209629759  0.073746221
-  #      #    -2.754138309 -1.590096578  4.519978046    -0.181544893 -0.104816800  0.073746248
-  #      #     2.754139668 -1.590094072  4.519978030     0.181544989 -0.104816797  0.073746194
-  #      F.readline()
-  #      F.readline()
-  #      F.readline()
-  #      F.readline()
-  #      data = zeros((3,6))
-  #      for i in range(3):
-  #        data[i,:] = [float(val) for val in F.readline().split() ]
-  #      
-  #      self.unit_cell = mat(data[:,0:3])
-  #    elif line.startswith("  in kB"):
-  #      # Note that we are reading the line expressed in kBar, because due to the units it prints out 
-  #      # more significant digits. It is then converted to eV/A**3
-  #      #  FORCE on cell =-STRESS in cart. coord.  units (eV/reduce length):
-  #      #  Direction    X        Y        Z        XY       YZ       ZX
-  #      #  --------------------------------------------------------------------------------------
-  #      #  Alpha Z    504.77    504.77    504.77
-  #      #  Ewald    -2811.56  -2811.69  -2888.52      0.00      0.00      0.00
-  #      #  Hartree    969.00    968.94    916.13      0.00      0.00      0.00
-  #      #  E(xc)     -495.50   -495.50   -495.50      0.00      0.00      0.00
-  #      #  Local       97.66     97.85    230.25      0.00      0.00      0.00
-  #      #  n-local    -61.49    -61.50    -58.22      0.00      0.00      0.00
-  #      #  augment    450.97    450.97    448.01      0.00      0.00      0.00
-  #      #  Kinetic   1346.16   1346.17   1343.09      0.00      0.00      0.00
-  #      #  -------------------------------------------------------------------------------------
-  #      #  Total        0.01      0.01      0.00      0.00      0.00      0.00
-  #      #  in kB        0.07      0.07      0.05      0.00      0.00      0.00
-  #      data=line.split()
-  #      self.stress = mat(zeros((3,3)))
-  #      self.stress[0,0] = float(data[2])
-  #      self.stress[1,1] = float(data[3])
-  #      self.stress[2,2] = float(data[4])
-  #      self.stress[0,1] = self.stress[1,0] = float(data[5])
-  #      self.stress[2,1] = self.stress[1,2] = float(data[6])
-  #      self.stress[0,2] = self.stress[2,0] = float(data[7])
-  #      # Conversion from kbar to ev/A^3.
-  #      self.stress *= KBAR_TO_EVA3
-  #    elif line.startswith("  free  energy"):
-  #      #  free  energy   TOTEN  =       -71.184108 eV
-  #      data = line.split()
-  #      self.energy = float(data[-2])
-  #    elif line.startswith(" POSCAR ="):
-  #      # Name of the system
-  #      self.name = line[line.find("=")+1:]
-  #    elif line.startswith("   ions per type ="):
-  #      # Ionic species information
-  #      self.num_per_type = [int(v) for v in line.split()[4:]]
-  #      # By this time we already know the species:
-  #      self.species=[]
-  #      for i,n in enumerate(self.num_per_type):
-  #        self.species.extend(n*[self._temporary_species[i]])
-  #    elif line.startswith("   ZVAL   ="):
-  #      # Effective Z of each nuclei
-  #      # Note that it might be multiline 
-  #      data = []
-  #      while line.startswith("   ZVAL   ="):
-  #        data.extend( line.split()[2:] )
-  #        line = F.readline()
-  #        
-  #      self.zvals = []
-  #      for num,sp in enumerate(self.num_per_type):
-  #        self.zvals.extend(int(sp)*[float(data[num])])
-  #    elif line.startswith("   POMASS =") and line.count('ZVAL') == 0:
-  #      # Atomic mass of each nuclei
-  #      # Note that it might be multiline
-  #      data = []
-  #      while line.startswith("   POMASS ="):
-  #        data.extend( line.split()[2:] )
-  #        line = F.readline()
-  #        
-  #      self.pomass = []
-  #      for num,sp in enumerate(self.num_per_type):
-  #        self.pomass.extend(int(sp)*[float(data[num])])
-  #    elif line.startswith("   VRHFIN"):
-  #      self._temporary_species.append(re.search('=(.+):',line).group(1))
-  #      # this will be expanded when we know how many atoms per specie we have        
-  #    elif line.startswith(" total charge "):
-  #      F.readline()
-  #      F.readline()
-  #      F.readline()
-  #      self.charges = [0.]*self.num_atoms
-  #      for i in range(self.num_atoms):
-  #        line = F.readline()
-  #        data = line.split()
-  #        self.charges[i] = float(data[-1])
-  #    elif line.startswith(" magnetization ("):
-  #      data = line.split()
-  #      if data[1]=="(x)":
-  #        mindx=0
-  #      if data[1]=="(y)":
-  #        mindx=1
-  #      if data[1]=="(z)":
-  #        mindx=2
-  #      F.readline()
-  #      F.readline()
-  #      F.readline()
-  #      if not hasattr(self,"proj_magn"):
-  #        self.proj_magn = zeros((self.num_atoms, 3))
-  #      for i in range(self.num_atoms):
-  #        line = F.readline()
-  #        data = line.split()
-  #        self.proj_magn[i,mindx] = float(data[-1])
-  #      
-  #      
+    self.magmoms = [mag['tot'] for mag in outcar.magnetization]
 
+    # UNIT CELL
+    self.unit_cell = structure.lattice.matrix
+    self.volume = structure.lattice.volume
+
+    # total energy in eV
+    self.energy = outcar.final_energy
+    # atomic positions read from Outcar
+    self.atoms = np.array(outcar.read_table_pattern(header_pattern=r"\sPOSITION\s+TOTAL-FORCE \(eV/Angst\)\n\s-+",
+                                                     row_pattern=r"\s+([+-]?\d+\.\d+)\s+([+-]?\d+\.\d+)\s+([+-]?\d+\.\d+)\s+[+-]?\d+\.\d+\s+[+-]?\d+\.\d+\s+[+-]?\d+\.\d+",
+                                                     footer_pattern=r"\s--+",
+                                                     postprocess=lambda x: float(x),
+                                                     last_one_only=False)[0])
+    # forces acting on atoms from Outcar
+    self.forces = np.array(outcar.read_table_pattern(header_pattern=r"\sPOSITION\s+TOTAL-FORCE \(eV/Angst\)\n\s-+",
+                                                     row_pattern=r"\s+[+-]?\d+\.\d+\s+[+-]?\d+\.\d+\s+[+-]?\d+\.\d+\s+([+-]?\d+\.\d+)\s+([+-]?\d+\.\d+)\s+([+-]?\d+\.\d+)",
+                                                     footer_pattern=r"\s--+",
+                                                     postprocess=lambda x: float(x),
+                                                     last_one_only=False)[0])
+    # stresses
+    #self.stress_o = outcar.read_pattern(patterns=r"^  in kB", reverse=False, terminate_on_match=False)
+    #print(self.stress_o)
+    
+    line=" "
+    while line:
+      line = F.readline()
+      if line.startswith(" number of electron"):
+        # number of electron   94.0000001 magnetization    0.0000060  -0.0364612   0.0000000
+        data=line.split()
+        self.__magnetization = np.mat(np.zeros((1,3)))
+        if len(data) == 8:
+          self.__magnetization[0,0]=float(data[5])
+          self.__magnetization[0,1]=float(data[6])
+          self.__magnetization[0,2]=float(data[7])
+        elif len(data) == 6:
+          #self.debug("Only collinear magnetization available", LOG_WARNING)
+          self.__magnetization[0,2]=float(data[5])
+        #else:
+        #  self.debug("No magnetization available", LOG_WARNING)
+
+      elif line.startswith("  in kB"):
+        # Note that we are reading the line expressed in kBar, because due to the units it prints out 
+        # more significant digits. It is then converted to eV/A**3
+        #  FORCE on cell =-STRESS in cart. coord.  units (eV/reduce length):
+        #  Direction    X        Y        Z        XY       YZ       ZX
+        #  --------------------------------------------------------------------------------------
+        #  Alpha Z    504.77    504.77    504.77
+        #  Ewald    -2811.56  -2811.69  -2888.52      0.00      0.00      0.00
+        #  Hartree    969.00    968.94    916.13      0.00      0.00      0.00
+        #  E(xc)     -495.50   -495.50   -495.50      0.00      0.00      0.00
+        #  Local       97.66     97.85    230.25      0.00      0.00      0.00
+        #  n-local    -61.49    -61.50    -58.22      0.00      0.00      0.00
+        #  augment    450.97    450.97    448.01      0.00      0.00      0.00
+        #  Kinetic   1346.16   1346.17   1343.09      0.00      0.00      0.00
+        #  -------------------------------------------------------------------------------------
+        #  Total        0.01      0.01      0.00      0.00      0.00      0.00
+        #  in kB        0.07      0.07      0.05      0.00      0.00      0.00
+        data=line.split()
+        self.stress = np.mat(np.zeros((3,3)))
+        self.stress[0,0] = float(data[2])
+        self.stress[1,1] = float(data[3])
+        self.stress[2,2] = float(data[4])
+        self.stress[0,1] = self.stress[1,0] = float(data[5])
+        self.stress[2,1] = self.stress[1,2] = float(data[6])
+        self.stress[0,2] = self.stress[2,0] = float(data[7])
+        #print(self.stress)
+        # Conversion from kbar to ev/A^3.
+        self.stress *= KBAR_TO_EVA3
+
+      elif line.startswith("   VRHFIN"):
+        self._temporary_species.append(re.search('=(.+):',line).group(1))
+        # this will be expanded when we know how many atoms per specie we have        
+      elif line.startswith(" magnetization ("):
+        data = line.split()
+        if data[1]=="(x)":
+          mindx=0
+        if data[1]=="(y)":
+          mindx=1
+        if data[1]=="(z)":
+          mindx=2
+        F.readline()
+        F.readline()
+        F.readline()
+        if not hasattr(self,"proj_magn"):
+          self.proj_magn = zeros((self.num_atoms, 3))
+        for i in range(self.num_atoms):
+          line = F.readline()
+          data = line.split()
+          self.proj_magn[i,mindx] = float(data[-1])
+        #print(self.proj_magn)
+  
+    print(self.__magnetization)        
   #  self.load_polarization( filename )
-  #  self.fileID = filename
-  #  F.close()
+    self.fileID = filename
+    F.close()
+
     
   #def get__magnetization(self):
   #  """
@@ -380,7 +345,7 @@ class calculation(atomic_set):
   #    return None
     
   
-class calculation_set(loggable):
+class calculation_set():
   """
   A class representing a full set of calculations read from multiple subdirectories.
   """
@@ -422,62 +387,63 @@ class calculation_set(loggable):
     self._ionic_displacements_list=[]
     self._lattice_displacements_list=[]
   
-#  #@classmethod
-#  #def read_directory(cls, dirname, saxis, usecache=False):
-#  #  """
-#  #  Read the whole directory containing subdirectories with OUTCARS.
-#  #  This function fills in the self._calculation_list attribute.
-#  #  At the end the self.groundstate attribute is chosen from the list 
-#  #  based on the energy.
-#  #  """
-#  #  import sys
-#  #  import pickle
-#
-#  #  calculation.saxis = saxis
-#  # 
-#  #  if usecache:
-#  #    dataname = dirname+'_pickled.dat'
-#  #    if os.access( dataname, os.R_OK ):
-#  #      F = open(dataname,'rb')
-#  #      cs = pickle.load(F)
-#  #      F.close()
-#  #      return cs
-#
-#  #  cs = calculation_set()
-#
-#  #  for f in os.listdir(dirname):
-#  #    path = os.path.join(dirname,f)
-#  #    if os.path.isdir( path ):   
-#  #      fpath = os.path.join( path, 'OUTCAR' )
-#  #      if os.access( fpath, os.R_OK ) or os.access( fpath+'.gz', os.R_OK ):
-#  #        c = calculation()
-#  #        cs.debug('Reading calculation from %s' % fpath, LOG_INFO)
-#  #        c.load_from_outcar( fpath )
-#  #        cs._calculation_list.append( c )
-#
-#  #  me = 0.0
-#  #  for c in cs._calculation_list:
-#  #    if c.energy < me:
-#  #      me = c.energy
-#  #      cs.groundstate = c
-#  #    
-#  #  supercell_definition = re.search("(SUPERCELL)\s+([^\s]+)", cs.groundstate.name) 
-#  #  if supercell_definition:
-#  #    print supercell_definition.groups()
-#  #    repetitions = re.match("([0-9]+)x([0-9]+)x([0-9]+)", supercell_definition.groups()[1])
-#  #    if repetitions:
-#  #      cs.expand_translational_symmetry([int(r) for r in repetitions.groups()])
-#  #    else:
-#  #      #TODO: load a file with translationlist?
-#  #      cs.expand_translational_symmetry(xxx)
-#  #      
-#  #  if usecache:
-#  #    F = open(dataname,'wb')
-#  #    pickle.dump(cs,F,-1)
-#  #    F.close()
-#
-#  #  return cs
-#
+  @classmethod
+  def read_directory(cls, dirname, fdt, saxis, usecache=False):
+    """
+    Read the whole directory containing subdirectories with OUTCARS.
+    This function fills in the self._calculation_list attribute.
+    At the end the self.groundstate attribute is chosen from the list 
+    based on the energy.
+    """
+    import pickle
+  
+  #calculation.saxis = saxis
+   
+  #  if usecache:
+  #    dataname = dirname+'_pickled.dat'
+  #    if os.access( dataname, os.R_OK ):
+  #      F = open(dataname,'rb')
+  #      cs = pickle.load(F)
+  #      F.close()
+  #      return cs
+    
+    cs = calculation_set()
+
+    for f in fdt.structures_ion:
+      path = os.path.join(dirname,f)
+      if os.path.isdir(path):
+        fpath = os.path.join(path,'OUTCAR')
+        if os.access( fpath, os.R_OK ) or os.access( fpath+'.gz', os.R_OK ):
+          print(fpath)
+          c = calculation()
+  #        cs.debug('Reading calculation from %s' % fpath, LOG_INFO)
+          c.load_from_outcar(fpath, fdt.structures_ion[f])
+  #        cs._calculation_list.append( c )
+      break
+
+  #  me = 0.0
+  #  for c in cs._calculation_list:
+  #    if c.energy < me:
+  #      me = c.energy
+  #      cs.groundstate = c
+      
+  #  supercell_definition = re.search("(SUPERCELL)\s+([^\s]+)", cs.groundstate.name) 
+  #  if supercell_definition:
+  #    print supercell_definition.groups()
+  #    repetitions = re.match("([0-9]+)x([0-9]+)x([0-9]+)", supercell_definition.groups()[1])
+  #    if repetitions:
+  #      cs.expand_translational_symmetry([int(r) for r in repetitions.groups()])
+  #    else:
+  #      #TODO: load a file with translationlist?
+  #      cs.expand_translational_symmetry(xxx)
+        
+  #  if usecache:
+  #    F = open(dataname,'wb')
+  #    pickle.dump(cs,F,-1)
+  #    F.close()
+
+  #  return cs
+
 #  #def add_calculation(self, c ):
 #  #  self._calculation_list.append( c )
 #    
