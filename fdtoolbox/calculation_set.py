@@ -37,22 +37,22 @@ class calculation():
 
   saxis = [ 0., 0., 1. ]
   
-  #def load_polarization(self, filename):
-  #  """
-  #  This function tries to read Berry phase calculations from three files:
-  #  filename+'_berry_1' filename+'_berry_2' filename+'_berry_3'
-  #  If the files are not readable, no polarization attribute is set.
-  #  On successful run this method fills the following attributes:
-  #  - self.polarization - polarization as calculated from the three files, in cartesian coordinates (3 e/A**2)
-  #  - self.ev_phase - expectation value reported by VASP for each of the three directions (3x3 -e*A)
-  #  - self.ev_recip - the mean of the expectation value projected to internal coordinates (3 -e)
-  #  - self.berry_phase - berry phases of all strings in each of the directions (3xN 1)
-  #  - self.polarization_quant - polarization quant for the calculation (3x3 e/A**2)
-  #  - self.i_polarization_quant - inverse of polarization quant
-  #  """
-  #  self.berry_phase=3*[None]
-  #  self.berry_ev=3*[None]
-  #  self.berry_ion=3*[None]
+  def load_polarization(self, filename):
+    """
+    This function tries to read Berry phase calculations from three files:
+    filename+'_berry_1' filename+'_berry_2' filename+'_berry_3'
+    If the files are not readable, no polarization attribute is set.
+    On successful run this method fills the following attributes:
+    - self.polarization - polarization as calculated from the three files, in cartesian coordinates (3 e/A**2)
+    - self.ev_phase - expectation value reported by VASP for each of the three directions (3x3 -e*A)
+    - self.ev_recip - the mean of the expectation value projected to internal coordinates (3 -e)
+    - self.berry_phase - berry phases of all strings in each of the directions (3xN 1)
+    - self.polarization_quant - polarization quant for the calculation (3x3 e/A**2)
+    - self.i_polarization_quant - inverse of polarization quant
+    """
+    self.berry_phase=3*[None]
+    self.berry_ev=3*[None]
+    self.berry_ion=3*[None]
   #  self.num_per_type = []
   #  for kdirection in range(1,4):
   #    fname = ''.join( [ filename, '_berry_%d' % kdirection ] )
@@ -171,34 +171,29 @@ class calculation():
     This function reads atom positions, unit cell, forces and stress tensor from the VASP
     OUTCAR file
     """
-    print(filename[:-6]+'nscf_SOC/OUTCAR')
     filename = filename[:-6]+'nscf_SOC/OUTCAR'
     print(filename)
     if os.access(filename, os.R_OK):
-      F=open(filename, "r")
       outcar = Outcar(filename)
     else:
-      raise Exception("Missing file")
+      raise Exception("Missing OUTCAR file in {}".format{filaname})
       
-    self._temporary_species = []
     self.name = 'rr'
  
     # ATOMIC PROPERTIES
-    self.num_atoms = int(structure.composition.num_atoms)
-    self.atoms_frac = structure.frac_coords
-    self.atoms_cart = structure.cart_coords
-    self.num_per_type = [int(x) for x in structure.composition.get_el_amt_dict().values()]
-    self.species = [x.symbol for x in structure.species]
-    self.pomass = [Element(x.symbol).atomic_mass for x in structure.species]
-    self.charges = [x['tot'] for x in outcar.charge]
+    self.num_atoms = int(structure.composition.num_atoms)                                     # total number of atoms
+    self.atoms_frac = structure.frac_coords                                                   # fraction coordinates
+    self.atoms_cart = structure.cart_coords                                                   # cartesian coordinates
+    self.num_per_type = [int(x) for x in structure.composition.get_el_amt_dict().values()]    # number of atoms per type
+    self.species = [x.symbol for x in structure.species]                                      # list with atomic symbols for each specie
+    self.pomass = [Element(x.symbol).atomic_mass for x in structure.species]                  # list with atomic masses for each specie
+    self.charges = [x['tot'] for x in outcar.charge]                                          # list with charges
     
     # read zval dict and create a mapping 
     outcar.read_pseudo_zval()
     zval_dict = outcar.zval_dict
     self.zvals = [zval_dict[x.symbol] for x in structure.species]
-
-    self.magmoms = [mag['tot'] for mag in outcar.magnetization]
-
+   
     # UNIT CELL
     self.unit_cell = structure.lattice.matrix
     self.volume = structure.lattice.volume
@@ -217,82 +212,37 @@ class calculation():
                                                      footer_pattern=r"\s--+",
                                                      postprocess=lambda x: float(x),
                                                      last_one_only=False)[0])
-    # stresses
-    #self.stress_o = outcar.read_pattern(patterns=r"^  in kB", reverse=False, terminate_on_match=False)
-    #print(self.stress_o)
-    
-    line=" "
-    while line:
-      line = F.readline()
-      if line.startswith(" number of electron"):
-        # number of electron   94.0000001 magnetization    0.0000060  -0.0364612   0.0000000
-        data=line.split()
-        self.__magnetization = np.mat(np.zeros((1,3)))
-        if len(data) == 8:
-          self.__magnetization[0,0]=float(data[5])
-          self.__magnetization[0,1]=float(data[6])
-          self.__magnetization[0,2]=float(data[7])
-        elif len(data) == 6:
-          #self.debug("Only collinear magnetization available", LOG_WARNING)
-          self.__magnetization[0,2]=float(data[5])
-        #else:
-        #  self.debug("No magnetization available", LOG_WARNING)
 
-      elif line.startswith("  in kB"):
-        # Note that we are reading the line expressed in kBar, because due to the units it prints out 
-        # more significant digits. It is then converted to eV/A**3
-        #  FORCE on cell =-STRESS in cart. coord.  units (eV/reduce length):
-        #  Direction    X        Y        Z        XY       YZ       ZX
-        #  --------------------------------------------------------------------------------------
-        #  Alpha Z    504.77    504.77    504.77
-        #  Ewald    -2811.56  -2811.69  -2888.52      0.00      0.00      0.00
-        #  Hartree    969.00    968.94    916.13      0.00      0.00      0.00
-        #  E(xc)     -495.50   -495.50   -495.50      0.00      0.00      0.00
-        #  Local       97.66     97.85    230.25      0.00      0.00      0.00
-        #  n-local    -61.49    -61.50    -58.22      0.00      0.00      0.00
-        #  augment    450.97    450.97    448.01      0.00      0.00      0.00
-        #  Kinetic   1346.16   1346.17   1343.09      0.00      0.00      0.00
-        #  -------------------------------------------------------------------------------------
-        #  Total        0.01      0.01      0.00      0.00      0.00      0.00
-        #  in kB        0.07      0.07      0.05      0.00      0.00      0.00
-        data=line.split()
-        self.stress = np.mat(np.zeros((3,3)))
-        self.stress[0,0] = float(data[2])
-        self.stress[1,1] = float(data[3])
-        self.stress[2,2] = float(data[4])
-        self.stress[0,1] = self.stress[1,0] = float(data[5])
-        self.stress[2,1] = self.stress[1,2] = float(data[6])
-        self.stress[0,2] = self.stress[2,0] = float(data[7])
-        #print(self.stress)
-        # Conversion from kbar to ev/A^3.
-        self.stress *= KBAR_TO_EVA3
+    # READ STRESS: (XX, YY, ZZ, XY, YZ, ZX) and convert values to array
+    outcar.read_pattern({'stress':  r"in kB\s+([\.\-\d]+)\s+([\.\-\d]+)\s+([\.\-\d]+)\s+([\.\-\d]+)\s+([\.\-\d]+)\s+([\.\-\d]+)"}, terminate_on_match=False, postprocess=float)
+    stress = outcar.data.get("stress")[0]
+    self.stress = np.array([[stress[0], stress[3], stress[5]],
+                            [stress[3], stress[1], stress[4]],
+                            [stress[5], stress[4], stress[2]]])
 
-      elif line.startswith("   VRHFIN"):
-        self._temporary_species.append(re.search('=(.+):',line).group(1))
-        # this will be expanded when we know how many atoms per specie we have        
-      elif line.startswith(" magnetization ("):
-        data = line.split()
-        if data[1]=="(x)":
-          mindx=0
-        if data[1]=="(y)":
-          mindx=1
-        if data[1]=="(z)":
-          mindx=2
-        F.readline()
-        F.readline()
-        F.readline()
-        if not hasattr(self,"proj_magn"):
-          self.proj_magn = zeros((self.num_atoms, 3))
-        for i in range(self.num_atoms):
-          line = F.readline()
-          data = line.split()
-          self.proj_magn[i,mindx] = float(data[-1])
-        #print(self.proj_magn)
-  
-    print(self.__magnetization)        
-  #  self.load_polarization( filename )
+    # MAGNETIZATION and its PROJECTION ON EVERY ATOM
+    try:
+       # non-collinear
+       outcar.read_pattern({'total_mag': r"number of electron\s+\S+\s+magnetization\s+([\.\-\d]+)\s+([\.\-\d]+)\s+([\.\-\d]+)\s"}, terminate_on_match=False, postprocess=float)
+       self.__magnetization = outcar.data.get("total_mag")[-1]
+
+       self.proj_magn = np.array([mag['tot'].moment for mag in outcar.magnetization]) # 2-D array
+    except:
+       # collinear
+       outcar.read_pattern({'total_mag': r"number of electron\s+\S+\s+magnetization\s+(" r"\S+)"}, terminate_on_match=False, postprocess=float)
+       self.__magnetization = np.zeros(3)
+       self.__magnetization[2] = outcar.data.get("total_mag")[-1][0]
+ 
+       self.proj_magn = np.zeros((self.num_atoms,3))
+       for i in range(self.num_atoms):
+           self.proj_magn[i,2] = outcar.magnetization[i]['tot']                       # 2-D array
+
+    # NOTE: sum of magnetization projected on atoms differs from the total magnetization
+    self.proj_magn_sum = np.sum(self.proj_magn, axis=0)
+
+    # POLARIZATION    
+    self.load_polarization(filename)
     self.fileID = filename
-    F.close()
 
     
   #def get__magnetization(self):
@@ -317,26 +267,26 @@ class calculation():
   #  
   #magnetization = property( get__magnetization, None )
     
-  #def force(self, mode = 'ion'):
-  #  """
-  #  Return forces acting on 'ion's, 'lat'tice, or 'all' of them, flattened to one long vector.
-  #  Note that the forces on lattice are expressed in terms of change of total energy of the 
-  #  system per (cartesian) strain - which brings them to the same units as forces acting on ions (eV/1).
-  #  """
-  #  if mode == 'ion':
-  #    return self.forces.reshape((1,-1)) / self.volume
-  #  elif mode == 'lat':
-  #    return self.stress.flatten(0)
-  #  else:
-  #    ion = self.force('ion')
-  #    lat = self.force('lat')
-  #    return bmat('ion, lat')
+  def force(self, mode = 'ion'):
+    """
+    Return forces acting on 'ion's, 'lat'tice, or 'all' of them, flattened to one long vector.
+    Note that the forces on lattice are expressed in terms of change of total energy of the 
+    system per (cartesian) strain - which brings them to the same units as forces acting on ions (eV/1).
+    """
+    if mode == 'ion':
+      return(self.forces.reshape((1,-1)) / self.volume)
+    elif mode == 'lat':
+      return(self.stress.flatten(0))
+    else:
+      ion = self.force('ion')
+      lat = self.force('lat')
+      return(bmat('ion, lat'))
 
-  #def projected_charges(self):
-  #  if hasattr(self, "charges"):
-  #    return array(self.zvals)-array(self.charges)
-  #  else:
-  #    return None
+  def projected_charges(self):
+    if hasattr(self, "charges"):
+      return(array(self.zvals)-array(self.charges))
+    else:
+      return(None)
   
   #def projected_magnetizations(self):
   #  if hasattr(self, "proj_magn"):
