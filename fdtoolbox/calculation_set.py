@@ -50,16 +50,16 @@ class calculation():
     - self.polarization_quant - polarization quant for the calculation (3x3 e/A**2)
     - self.i_polarization_quant - inverse of polarization quant
     """
+    filename = filename[:-7]
+    print(filename)
     self.berry_phase=3*[None]
     self.berry_ev=3*[None]
     self.berry_ion=3*[None]
-  #  self.num_per_type = []
-  #  for kdirection in range(1,4):
-  #    fname = ''.join( [ filename, '_berry_%d' % kdirection ] )
-  #    if os.access( fname, os.R_OK ):
-  #      ifile = file( fname )
-  #    elif have_gzip and os.access(fname+'.gz', os.R_OK ):
-  #      ifile = gzip.open(fname+'.gz')
+    self.num_per_type = []
+    for kdirection in range(1,4):
+      fname = os.path.join(filename, 'Berry_%d/OUTCAR' % kdirection)
+      if os.access( fname, os.R_OK ):
+        ifile = open(fname)
   #    else:
   #      # Make sure, we have 0,0,0 as polarisation in case there is no berry phase output available 
   #      self.berry_phase=3*[array([[0.,0.]])]
@@ -72,56 +72,58 @@ class calculation():
   #      self.ev_recip = dot( mean(self.berry_ev,axis=0), self.recip_cell )
   #      self.recalculate_polarization()
   #      return      
-  #    line = " "
-  #    self.berry_phase[kdirection-1] = []
-  #    self.berry_ev[kdirection-1] = []
-  #    while line:
-  #      line = ifile.readline()
-  #      if line.startswith("   ISPIN  ="):
-  #        data = line.split()
-  #        self.numspin = int(data[2])
-  #      elif line.startswith("   LNONCOLLINEAR ="):
-  #        # This is a bit tricky - noncollinear calculations are officially numspin==1, but
-  #        # they do contain separate electrons, not electron pairs, and therefore should be 
-  #        # treated as numspin==2 for calculation of polarizations.
-  #        data = line.split()
-  #        if data[2] == "T":
-  #          self.numspin = 2
-  #      elif line.startswith("Expectation value"): #VASP 4.x
-  #        line = ifile.readline()
-  #        data = line.split() 
-  #        self.berry_ev[kdirection-1].append(  [ float(data[3][:-1]), float(data[4][:-1]), float(data[5]) ] )
-  #      elif line.find("e<r>_ev") > 0: #VASP 5.x
-  #        data = line.split()
-  #        self.berry_ev[kdirection-1].append( [ float(data[-5]), float(data[-4]), float(data[-3]) ] )
-  #      elif line.startswith("K-point string"): #VASP 4.x 5.x
-  #        data = line.split()
-  #        last_kpoint_weight = float(data[5])
-  #      elif line.startswith("Berry-Phase term:  "): #VASP 4.x
-  #        data = line.split()
-  #        self.berry_phase[kdirection-1].append( [float(data[2]), last_kpoint_weight] )
-  #      elif line.startswith("              Im ln[Det|M_k|]=" ): #VASP 5.x
-  #        data = line.split()
-  #        self.berry_phase[kdirection-1].append( [float(data[-2]), last_kpoint_weight] )
-  #      #No need to read ionic term - we will recalculate it anyway   
-  #      #elif line.startswith("ionic term:"): #VASP 4.x
-  #      #  line = ifile.readline()
-  #      #  data = line.split() 
-  #      #  self.berry_ion[kdirection-1] = [ [ float(data[3][:-1]), float(data[4][:-1]), float(data[5]) ] ]
-  #    
-  #    self.berry_phase[kdirection-1] = array(self.berry_phase[kdirection-1])
-  #    self.berry_ev[kdirection-1] = mean(array(self.berry_ev[kdirection-1]), axis=0)
-  #        
-  #  self.polarization_quant = self.unit_cell.copy() / self.volume
-  #          
-  #  # In case of nonpolarised calculations, we have two electrons per each Berry string
-  #  # So the quantum needs to be doubled.
-  #  self.berry_multiplier = 3-self.numspin
-  #  self.polarization_quant *= self.berry_multiplier
-  #  self.i_polarization_quant = linalg.inv(self.polarization_quant)
-  #  
-  #  self.ev_recip = dot( mean(self.berry_ev,axis=0), self.recip_cell )
-  #  
+      line = " "
+      self.berry_phase[kdirection-1] = []
+      self.berry_ev[kdirection-1] = []
+      while line:
+        line = ifile.readline()
+        if line.startswith("   ISPIN  ="):
+          data = line.split()
+          self.numspin = int(data[2])
+        elif line.startswith("   LNONCOLLINEAR ="):
+          # This is a bit tricky - noncollinear calculations are officially numspin==1, but
+          # they do contain separate electrons, not electron pairs, and therefore should be 
+          # treated as numspin==2 for calculation of polarizations.
+          data = line.split()
+          if data[2] == "T":
+            self.numspin = 2
+        elif line.startswith("Expectation value"): #VASP 4.x
+          line = ifile.readline()
+          data = line.split() 
+          self.berry_ev[kdirection-1].append(  [ float(data[3][:-1]), float(data[4][:-1]), float(data[5]) ] )
+        elif line.find("e<r>_ev") > 0: #VASP 5.x
+          data = line.split()
+          self.berry_ev[kdirection-1].append( [ float(data[-5]), float(data[-4]), float(data[-3]) ] )
+        elif line.startswith("K-point string"): #VASP 4.x 5.x
+          data = line.split()
+          last_kpoint_weight = float(data[5])
+        elif line.startswith("Berry-Phase term:  "): #VASP 4.x
+          data = line.split()
+          self.berry_phase[kdirection-1].append( [float(data[2]), last_kpoint_weight] )
+        elif line.startswith("              Im ln[Det|M_k|]=" ): #VASP 5.x
+          data = line.split()
+          self.berry_phase[kdirection-1].append( [float(data[-2]), last_kpoint_weight] )
+        #No need to read ionic term - we will recalculate it anyway   
+        #elif line.startswith("ionic term:"): #VASP 4.x
+        #  line = ifile.readline()
+        #  data = line.split() 
+        #  self.berry_ion[kdirection-1] = [ [ float(data[3][:-1]), float(data[4][:-1]), float(data[5]) ] ]
+     
+      print('numspin =', self.numspin)
+      print('berry_ev', self.berry_ev)
+      print('berry_phase', self.berry_phase)   
+      self.berry_phase[kdirection-1] = array(self.berry_phase[kdirection-1])
+      self.berry_ev[kdirection-1] = mean(array(self.berry_ev[kdirection-1]), axis=0)
+          
+    self.polarization_quant = self.unit_cell.copy() / self.volume
+            
+    # In case of nonpolarised calculations, we have two electrons per each Berry string
+    # So the quantum needs to be doubled.
+    self.berry_multiplier = 3-self.numspin
+    self.polarization_quant *= self.berry_multiplier
+    self.i_polarization_quant = np.linalg.inv(self.polarization_quant)
+    
+  #  self.ev_recip = np.dot( np.mean(self.berry_ev,axis=0), self.recip_cell )
   #  self.recalculate_polarization()
     
   #def berry_term(self):
@@ -171,12 +173,10 @@ class calculation():
     This function reads atom positions, unit cell, forces and stress tensor from the VASP
     OUTCAR file
     """
-    filename = filename[:-6]+'nscf_SOC/OUTCAR'
-    print(filename)
     if os.access(filename, os.R_OK):
       outcar = Outcar(filename)
     else:
-      raise Exception("Missing OUTCAR file in {}".format{filaname})
+      raise Exception("Missing OUTCAR file in {}".format(filaname))
       
     self.name = 'rr'
  
