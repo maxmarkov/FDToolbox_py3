@@ -1,20 +1,15 @@
 import numpy as np
-from pymatgen.io.vasp.outputs import Outcar, Vasprun
+from pymatgen.io.vasp.outputs import Outcar
 from pymatgen.core.periodic_table import Element
 
 from fdtoolbox.utility import *
-#from fdtoolbox.atomic.atomic_set import atomic_set
+from pymatgen.util.io_utils import micro_pyawk
 #from fdtoolbox.atomic.utility import loggable
 
 import os
 import atexit
 import re
 import sys
-try:
-  import gzip
-  have_gzip = True
-except:
-  have_gzip = False
 
 class calculation():
   """
@@ -37,6 +32,56 @@ class calculation():
 
   saxis = [ 0., 0., 1. ]
   
+  def read_berry_ev_old(self, filename):
+      """
+      Read berry_ev in old-fashioned way.  
+      """
+      ifile = open(filename)
+      line = " "
+      berry_ev = []
+      while line:
+         line = ifile.readline()
+         if line.find("e<r>_ev") > 0:
+           data = line.split()
+           berry_ev.append( [ float(data[-5]), float(data[-4]), float(data[-3]) ] )
+      ifile.close()
+      # average over spin components 1 and 2
+      berry_ev = np.mean(np.array(berry_ev), axis=0)
+      return(berry_ev)
+
+  def read_berry_ev(self, fname):
+     """
+     Read berry_ev in pymatgen way.
+     """
+     berry_ev = []
+     for spin in [1, 2]:
+        search = []
+
+        def func_berry_ev(results, match):
+            results.berry = np.array(
+                [
+                    float(match.group(1)),
+                    float(match.group(2)),
+                    float(match.group(3)),
+                ]
+            )
+
+        search.append(
+            [
+                r"Spin component "+str(spin)+"\s"
+                r"*e<r>_ev=\( *([-0-9.Ee+]*) *([-0-9.Ee+]*) "
+                r"*([-0-9.Ee+]*) *\)",
+                None,
+                func_berry_ev
+            ]
+        )
+        results = micro_pyawk(fname, search, self)
+        berry_ev.append(results.berry)
+     # average over spin components 1 and 2
+     berry_ev = np.mean(berry_ev, axis=0)
+     return(berry_ev)
+      
+  
   def load_polarization(self, filename):
     """
     This function tries to read Berry phase calculations from three files:
@@ -49,72 +94,58 @@ class calculation():
     - self.berry_phase - berry phases of all strings in each of the directions (3xN 1)
     - self.polarization_quant - polarization quant for the calculation (3x3 e/A**2)
     - self.i_polarization_quant - inverse of polarization quant
+    TO DO: 1) numspin 2) check all variables with respect to the old code 3) new polarization 
     """
     filename = filename[:-7]
     print(filename)
+
     self.berry_phase=3*[None]
     self.berry_ev=3*[None]
     self.berry_ion=3*[None]
     self.num_per_type = []
+
+    # Noncollinear calculations are officially numspin==1, but they do contain separate electrons, not electron pairs,
+    # Therefore, they should be treated as numspin==2 for calculation of polarizations.
+    self.numspin = 2
+
+    # Extract information from OUTCAR file in each of 3 directions.
     for kdirection in range(1,4):
       fname = os.path.join(filename, 'Berry_%d/OUTCAR' % kdirection)
+
       if os.access( fname, os.R_OK ):
-        ifile = open(fname)
-  #    else:
-  #      # Make sure, we have 0,0,0 as polarisation in case there is no berry phase output available 
-  #      self.berry_phase=3*[array([[0.,0.]])]
-  #      self.berry_ev=3*[array([0., 0., 0.])]
-  #      self.berry_ion=3*[[[0., 0., 0.]]]
-  #      self.polarization_quant = self.unit_cell.copy() / self.volume
-  #      self.berry_multiplier = 1.
-  #      self.polarization_quant *= self.berry_multiplier
-  #      self.i_polarization_quant = linalg.inv(self.polarization_quant)
-  #      self.ev_recip = dot( mean(self.berry_ev,axis=0), self.recip_cell )
-  #      self.recalculate_polarization()
-  #      return      
-      line = " "
-      self.berry_phase[kdirection-1] = []
-      self.berry_ev[kdirection-1] = []
-      while line:
-        line = ifile.readline()
-        if line.startswith("   ISPIN  ="):
-          data = line.split()
-          self.numspin = int(data[2])
-        elif line.startswith("   LNONCOLLINEAR ="):
-          # This is a bit tricky - noncollinear calculations are officially numspin==1, but
-          # they do contain separate electrons, not electron pairs, and therefore should be 
-          # treated as numspin==2 for calculation of polarizations.
-          data = line.split()
-          if data[2] == "T":
-            self.numspin = 2
-        elif line.startswith("Expectation value"): #VASP 4.x
-          line = ifile.readline()
-          data = line.split() 
-          self.berry_ev[kdirection-1].append(  [ float(data[3][:-1]), float(data[4][:-1]), float(data[5]) ] )
-        elif line.find("e<r>_ev") > 0: #VASP 5.x
-          data = line.split()
-          self.berry_ev[kdirection-1].append( [ float(data[-5]), float(data[-4]), float(data[-3]) ] )
-        elif line.startswith("K-point string"): #VASP 4.x 5.x
-          data = line.split()
-          last_kpoint_weight = float(data[5])
-        elif line.startswith("Berry-Phase term:  "): #VASP 4.x
-          data = line.split()
-          self.berry_phase[kdirection-1].append( [float(data[2]), last_kpoint_weight] )
-        elif line.startswith("              Im ln[Det|M_k|]=" ): #VASP 5.x
-          data = line.split()
-          self.berry_phase[kdirection-1].append( [float(data[-2]), last_kpoint_weight] )
-        #No need to read ionic term - we will recalculate it anyway   
-        #elif line.startswith("ionic term:"): #VASP 4.x
-        #  line = ifile.readline()
-        #  data = line.split() 
-        #  self.berry_ion[kdirection-1] = [ [ float(data[3][:-1]), float(data[4][:-1]), float(data[5]) ] ]
+ 
+         # open and read OUTCAR file
+         outcar = Outcar(fname)
+
+         # berry phase
+         outcar.read_pattern({'berry_phase':  r"Im\s+ln\[Det\|M_k\|\]=\s+([+-]?\d+\.\d+)\s"}, terminate_on_match=False, postprocess=float)
+         bphase = [item for sublist in outcar.data.get("berry_phase") for item in sublist]
+         # k-point weights
+         outcar.read_pattern({'kpoint_weights':  r"K-point string #\s+\S+\s+weight=\s+([+-]?\d+\.\d+)\s"}, terminate_on_match=False, postprocess=float)
+         kpoint_weights = [item for sublist in outcar.data.get("kpoint_weights") for item in sublist]
+
+         self.berry_phase[kdirection-1] = np.array([list(x) for x in zip(bphase, kpoint_weights)])
+
+         self.berry_ev[kdirection-1] = self.read_berry_ev(fname)
+         # alternative way to read berry_ev from Outcar
+         #self.berry_ev[kdirection-1] = self.read_berry_ev_old(fname)
+            
+      else:
+         # Make sure, we have 0,0,0 as polarisation in case there is no berry phase output available 
+         self.berry_phase=3*[np.zeros((1,2))]
+         self.berry_ev=3*[np.zeros((3))]
+         self.berry_ion=3*[[[0., 0., 0.]]]
+
+         self.polarization_quant = self.unit_cell.copy() / self.volume
+         self.berry_multiplier = 1.
+         self.polarization_quant *= self.berry_multiplier
+
+         self.i_polarization_quant = np.linalg.inv(self.polarization_quant)
+         self.ev_recip = np.dot( np.mean(self.berry_ev,axis=0), self.recip_cell )
+
+         self.recalculate_polarization()
+         return      
      
-      print('numspin =', self.numspin)
-      print('berry_ev', self.berry_ev)
-      print('berry_phase', self.berry_phase)   
-      self.berry_phase[kdirection-1] = array(self.berry_phase[kdirection-1])
-      self.berry_ev[kdirection-1] = mean(array(self.berry_ev[kdirection-1]), axis=0)
-          
     self.polarization_quant = self.unit_cell.copy() / self.volume
             
     # In case of nonpolarised calculations, we have two electrons per each Berry string
@@ -123,48 +154,46 @@ class calculation():
     self.polarization_quant *= self.berry_multiplier
     self.i_polarization_quant = np.linalg.inv(self.polarization_quant)
     
-  #  self.ev_recip = np.dot( np.mean(self.berry_ev,axis=0), self.recip_cell )
-  #  self.recalculate_polarization()
+    self.ev_recip = np.dot( np.mean(self.berry_ev,axis=0), self.recip_cell )
+    self.recalculate_polarization()
     
-  #def berry_term(self):
-  #  """
-  #  Returns Berry term part of the polarization for each of the IGPAR directions (i.e. 
-  #  k-point weighted sum of Berry terms for each k-point). The term is multiplied by proper 
-  #  multiplier to make sure that closed-shell calculations sum up to proper number of electrons. 
-  #  """
-  #  bp = zeros((1,3))
-  #  for i in range(3):
-  #    # berry_phase[i][:,0] -> berry term, self.berry_phase[i][:,1] -> k-point weight
-  #    bp[0,i] = sum(self.berry_phase[i][:,0]*self.berry_phase[i][:,1])
-  #  return self.berry_multiplier*mat(bp)
+  def berry_term(self):
+    """
+    Returns Berry term part of the polarization for each of the IGPAR directions (i.e. 
+    k-point weighted sum of Berry terms for each k-point). The term is multiplied by proper 
+    multiplier to make sure that closed-shell calculations sum up to proper number of electrons. 
+    """
+    bp = np.zeros((1,3))
+    for i in range(3):
+      # berry_phase[i][:,0] -> berry term, self.berry_phase[i][:,1] -> k-point weight
+      bp[0,i] = sum(self.berry_phase[i][:,0]*self.berry_phase[i][:,1])
+    return self.berry_multiplier*bp
     
-  #def ionic_term(self):
-  #  """
-  #  Returns ionic part of polarization. Contrary to VASP it calculates this with 0 as a 
-  #  reference point (VASP uses fract(1/2,1/2,1/2)).
-  #  """
-  #  ion=zeros((1,3))
-  #  for atom, zval in zip(self.atoms, self.zvals):
-  #    ion += -zval*atom
-  #  return mat(ion)
+  def ionic_term(self):
+    """
+    Returns ionic part of polarization. Contrary to VASP it calculates this with 0 as a 
+    reference point (VASP uses fract(1/2,1/2,1/2)).
+    """
+    ion=np.zeros((1,3))
+    for atom, zval in zip(self.atoms, self.zvals):
+      ion += -zval*atom
+    return ion
     
       
-  #def recalculate_polarization(self):
-  #  """
-  #  Recalculates the polarization from the data gathered from the OUTCAR_berry_[123] files.
-  #  This function should be called whenever we tamper with Berry phases (to fix problems with
-  #  polarization quantum).
-  #  """    
-  #  # Gather data from all three directions
+  def recalculate_polarization(self):
+    """
+    Recalculates the polarization from the data gathered from the OUTCAR_berry_[123] files.
+    This function should be called whenever we tamper with Berry phases (to fix problems with
+    polarization quantum).
+    """    
+    # Gather data from all three directions
+    self.polarization = self.berry_term()*self.unit_cell + np.mean(self.ionic_term(),axis=0) + np.mean(self.berry_ev,axis=0)
+    # Note that VASP reports data in 'electrons * A', meaning the lack of minus sign
+    # and not scaling by cell volume.
+    self.polarization /= -self.volume
 
-  #  self.polarization = self.berry_term()*self.unit_cell + mean(self.ionic_term(),axis=0) + mean(self.berry_ev,axis=0)
-
-  #  # Note that VASP reports data in 'electrons * A', meaning the lack of minus sign
-  #  # and not scaling by cell volume.
-  #  self.polarization /= -self.volume
-
-  #  return self.polarization
-  #  # At the end, the polarization is expressed in e/A**2
+    return self.polarization
+    # At the end, the polarization is expressed in e/A**2
     
 
 
@@ -196,6 +225,7 @@ class calculation():
    
     # UNIT CELL
     self.unit_cell = structure.lattice.matrix
+    self.recip_cell = structure.lattice.reciprocal_lattice.matrix
     self.volume = structure.lattice.volume
 
     # total energy in eV
@@ -239,33 +269,34 @@ class calculation():
 
     # NOTE: sum of magnetization projected on atoms differs from the total magnetization
     self.proj_magn_sum = np.sum(self.proj_magn, axis=0)
+    self.get__magnetization()
 
     # POLARIZATION    
     self.load_polarization(filename)
     self.fileID = filename
 
     
-  #def get__magnetization(self):
-  #  """
-  #  Returns the magnetization vector in Cartesian coordinates. The self.__magnetization always
-  #  stores the magnetization as read from OUTCAR. Note that for optimization purposes the rotated
-  #  magnetization is stored between calls. If self.saxis is changed, the invalidate_magnetization 
-  #  method _must_ be called on all Calculation class objects.    
-  #  """
-  #  # Rotation of reported magnetic moment - according to:
-  #  # http://cms.mpi.univie.ac.at/vasp/vasp/node159.html
-  #  if not hasattr(self, "__rotated_magnetization"):
-  #    self.__rotated_magnetization = dot( self.__magnetization, inv_saxis_rotation(self.saxis) )
-  #    
-  #  return self.__rotated_magnetization 
+  def get__magnetization(self):
+    """
+    Returns the magnetization vector in Cartesian coordinates. The self.__magnetization always
+    stores the magnetization as read from OUTCAR. Note that for optimization purposes the rotated
+    magnetization is stored between calls. If self.saxis is changed, the invalidate_magnetization 
+    method _must_ be called on all Calculation class objects.    
+    """
+    # Rotation of reported magnetic moment - according to:
+    # https://www.vasp.at/wiki/index.php/SAXIS
+    if not hasattr(self, "__rotated_magnetization"):
+      self.__rotated_magnetization = np.dot( self.__magnetization, inv_saxis_rotation(self.saxis) )
+      
+    return self.__rotated_magnetization 
   
-  #def invalidate_magnetization(self):
-  #  """
-  #  Clear magnetization expressed in cartesian coordinates.
-  #  """
-  #  del self.__rotated_magnetization
-  #  
-  #magnetization = property( get__magnetization, None )
+  def invalidate_magnetization(self):
+    """
+    Clear magnetization expressed in cartesian coordinates.
+    """
+    del self.__rotated_magnetization
+    
+  magnetization = property( get__magnetization, None )
     
   def force(self, mode = 'ion'):
     """
@@ -284,15 +315,15 @@ class calculation():
 
   def projected_charges(self):
     if hasattr(self, "charges"):
-      return(array(self.zvals)-array(self.charges))
+      return(np.array(self.zvals)-np.array(self.charges))
     else:
       return(None)
   
-  #def projected_magnetizations(self):
-  #  if hasattr(self, "proj_magn"):
-  #    return dot( self.proj_magn, inv_saxis_rotation(self.saxis) )
-  #  else:
-  #    return None
+  def projected_magnetizations(self):
+    if hasattr(self, "proj_magn"):
+      return np.dot( self.proj_magn, inv_saxis_rotation(self.saxis) )
+    else:
+      return None
     
   
 class calculation_set():
