@@ -186,15 +186,15 @@ def safe_inv(matrix, threshold = 0, iterate_components = None):
 
   return vv*np.mat(np.diag(new_ee))*vv.T, skipcount, ee
 
-#def invert_with_warning(matrix, threshold, warning_msg, expected_skip):
-#  inv_m, skip, ee = safe_inv(matrix, threshold)
+def invert_with_warning(matrix, threshold, warning_msg, expected_skip):
+  inv_m, skip, ee = safe_inv(matrix, threshold)
 #  if skip != expected_skip:
 #    loggable.debug(warning_msg % skip, LOG_WARNING)
 #    loggable.debug('Near-zero threshold was: %10.6f'%threshold, LOG_ALLINFO)
 #    loggable.debug('Eigenvalues of the matrix were:', LOG_ALLINFO)
 #    loggable.debug(mat2str( linalg.eig((matrix+matrix.T)/2.)[0], '%10.6f'), LOG_ALLINFO)
-#  
-#  return inv_m                 
+  
+  return inv_m                 
     
 #def argvtospecies( argv ):
 #  species = []
@@ -212,11 +212,17 @@ def safe_inv(matrix, threshold = 0, iterate_components = None):
 #  parser.add_option("-R", "--nocache", action='store_true', dest='nocache', default=False, help="Reread the data and overwrite '_pickled.dat' cache file.")
 #  parser.add_option("-a", "--asr", action='store_true', dest='asr', default=False, help="Force acoustic sum rule on the FC matrix.")
 
-#def set_common_options(cs, lin_exp, options): 
-#  if options.trans is not None:
-#    cs.TRANSLATIONAL_MODE_THRESHOLD = float(options.trans)/cs.groundstate.volume
-#    
-#  if options.rotat is not None:
-#    cs.ROTATIONAL_MODE_THRESHOLD = float(options.rotat)/EVA3_TO_GPA
-#    
-#  lin_exp.force_asr = options.asr 
+def set_common_options(cs, lin_exp, options): 
+  if options.trans is not None:
+    cs.TRANSLATIONAL_MODE_THRESHOLD = float(options.trans)/cs.groundstate.volume
+    
+  if options.rotat is not None:
+    cs.ROTATIONAL_MODE_THRESHOLD = float(options.rotat)/EVA3_TO_GPA
+    
+  lin_exp.force_asr = options.asr 
+
+def metro_dist( v1, v2 ):
+  """
+  Helper function used in fixing "jumped ions" and problematic polarizations.
+  """
+  return abs(v1 - v2).max()
