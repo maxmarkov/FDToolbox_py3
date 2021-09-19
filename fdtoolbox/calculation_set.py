@@ -125,12 +125,11 @@ class calculation():
 
          self.berry_phase[kdirection-1] = np.array([list(x) for x in zip(bphase, kpoint_weights)])
 
-         self.berry_ev[kdirection-1] = self.read_berry_ev(fname)
+         #self.berry_ev[kdirection-1] = self.read_berry_ev(fname)
          # alternative way to read berry_ev from Outcar
-         #self.berry_ev[kdirection-1] = self.read_berry_ev_old(fname)
+         self.berry_ev[kdirection-1] = self.read_berry_ev_old(fname)
 
          outcar.read_lcalcpol()
-         print('lcalcpol=', outcar.p_elec)
             
       else:
          # Make sure, we have 0,0,0 as polarisation in case there is no berry phase output available 
@@ -187,10 +186,9 @@ class calculation():
     Recalculates the polarization from the data gathered from the OUTCAR_berry_[123] files.
     This function should be called whenever we tamper with Berry phases (to fix problems with
     polarization quantum).
-    """    
+    """
     # Gather data from all three directions
-    self.polarization = self.berry_term()*self.unit_cell + np.mean(self.ionic_term(),axis=0) + np.mean(self.berry_ev,axis=0)
-    print(self.polarization)
+    self.polarization = np.matmul(self.berry_term(),self.unit_cell) + np.mean(self.ionic_term(),axis=0) + np.mean(self.berry_ev,axis=0)
     # Note that VASP reports data in 'electrons * A', meaning the lack of minus sign
     # and not scaling by cell volume.
     self.polarization /= -self.volume
@@ -210,7 +208,8 @@ class calculation():
     else:
       raise Exception("Missing OUTCAR file in {}".format(filaname))
       
-    self.name = 'rr'
+    self.name = filename.split('/')[-2]
+    print(self.name)
  
     # ATOMIC PROPERTIES
     self.num_atoms = int(structure.composition.num_atoms)                                     # total number of atoms
@@ -227,8 +226,8 @@ class calculation():
     self.zvals = [zval_dict[x.symbol] for x in structure.species]
    
     # UNIT CELL
-    self.unit_cell = structure.lattice.matrix
-    self.recip_cell = structure.lattice.reciprocal_lattice.matrix
+    self.unit_cell = structure.lattice.matrix      # unit cell
+    self.recip_cell = structure.lattice.inv_matrix # inverse unit cell
     self.volume = structure.lattice.volume
 
     # total energy in eV
@@ -252,7 +251,8 @@ class calculation():
     self.stress = np.array([[stress[0], stress[3], stress[5]],
                             [stress[3], stress[1], stress[4]],
                             [stress[5], stress[4], stress[2]]])
-
+    # Conversion from kbar to ev/A^3.
+    self.stress *= KBAR_TO_EVA3
     # MAGNETIZATION and its PROJECTION ON EVERY ATOM
     try:
        # non-collinear
@@ -314,7 +314,7 @@ class calculation():
     else:
       ion = self.force('ion')
       lat = self.force('lat')
-      return(bmat('ion, lat'))
+      return(np.bmat('ion, lat'))
 
   def projected_charges(self):
     if hasattr(self, "charges"):
@@ -588,7 +588,7 @@ class calculation_set():
     if mode == 'ion':
       return np.mat(np.concatenate([ calc.position() - self.groundstate.position() for calc in self.calculations(calcset) ]))
     elif mode == 'lat':
-      return np.mat(np.concatenate([ (self.groundstate.recip_cell*calc.unit_cell - eye(3)).flatten(1) for calc in self.calculations(calcset) ]))
+      return np.mat(np.concatenate([ (self.groundstate.recip_cell*calc.unit_cell - np.eye(3)).flatten(1) for calc in self.calculations(calcset) ]))
     else:
       return np.hstack([self.displacements('ion', calcset), self.displacements('lat', calcset)])
     
@@ -664,9 +664,8 @@ class calculation_set():
     # Returns: fc_matrix - the least-square solution (force constant matrix)
     #                 rs - sums of residuals: || displacemnent*fc_matrix - forces||^2    
     #                 rk - rank of displacement matrix
-    #                  s - singular values of displacement matrix 
-    (fc_matrix, rs, rk, s) = np.linalg.lstsq( 
-      np.hstack( [ displacements, np.ones((displacements.shape[0],1)) ] ), forces ) 
+    #                  s - singular values of displacement matrix
+    (fc_matrix, rs, rk, s) = np.linalg.lstsq(np.hstack( [ displacements, np.ones((displacements.shape[0],1)) ] ), forces, rcond=None) 
     residual = fc_matrix[-1,:]   # set residual to be the last column of force constant matrix
 
     # remember that when we talk about force constant matrix, we think actually second derivative
