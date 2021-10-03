@@ -2,7 +2,7 @@
 
 from fdtoolbox.calculation_set import calculation_set
 from generate_inputs import FDTcalculations 
-from fdtoolbox.utility import set_common_options, add_common_options
+from fdtoolbox.utility import set_common_options, add_common_options, mat2str
 from fdtoolbox.linear_expansion import linear_expansion
 import sys
 import os
@@ -42,12 +42,14 @@ set_common_options(cs, lin_exp, options)
 
 lin_exp.calculate_expansion_coefficients(update_from_calcset=True)
 
-#chitens, units = lin_exp.electric_susceptibility(lattice = False)
-#print('Dielectric tensor ionic contribution (%s)'%units)
+chitens, units = lin_exp.electric_susceptibility(lattice = False)
+print('Dielectric tensor ionic contribution (%s)'%units)
+print(chitens)
 #print(mat2str( chitens ))
 
-#chitens, units = lin_exp.electric_susceptibility()
-#print('Dielectric tensor ionic and cell contribution (%s)'%units)
+chitens, units = lin_exp.electric_susceptibility()
+print('Dielectric tensor ionic and cell contribution (%s)'%units)
+print(chitens)
 #print(mat2str( chitens ))
 
 #if options.decomp:

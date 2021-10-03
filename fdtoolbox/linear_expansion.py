@@ -17,11 +17,9 @@ class linear_expansion(): #(loggable):
        
       self.B_m_n     = self.calcset.force_constant_matrix('ion', 'ion')[0]  # force-constants matrix, climped cell
       self.B_j_k     = self.calcset.force_constant_matrix('lat', 'lat')[0]  # force-constants matrix, variable cell
-      #int(self.calcset.force_constant_matrix('lat', 'ion')[0].shape)
-      #print(self.calcset.force_constant_matrix('ion', 'lat')[0].T.shape)
       
-      #self.B_m_j     = 0.5*( self.calcset.force_constant_matrix('lat', 'ion')[0]+ 
-      #                       self.calcset.force_constant_matrix('ion', 'lat')[0].T ) # the symmetrized version of the internal strain tensor ^_{m,j} 
+      self.B_m_j     = 0.5*( self.calcset.force_constant_matrix('lat', 'ion')[0]+ 
+                             self.calcset.force_constant_matrix('ion', 'lat')[0].T ) # the symmetrized version of the internal strain tensor ^_{m,j} 
       # symmetrize the force constants
       if self.symmetrize:
         self.B_m_n     = 0.5*( self.B_m_n + self.B_m_n.T )
@@ -38,28 +36,28 @@ class linear_expansion(): #(loggable):
         
   
   
-      #self.B_m_alpha = -self.calcset.electric_polarization_matrix('ion')[0]  # the Born effective charges, climped cell
-      #self.B_alpha_j = -self.calcset.electric_polarization_matrix('lat')[0]  # the Born effective charges, variable cell
-      #self.B_m_mu    = self.calcset.magnetic_polarization_matrix('ion')[0]   # the magnetic charges, climped cell
-      #self.B_mu_j    = self.calcset.magnetic_polarization_matrix('lat')[0]   # the magnetic charges, variable cell
+      self.B_m_alpha = -self.calcset.electric_polarization_matrix('ion')[0]  # the Born effective charges, climped cell
+      self.B_alpha_j = -self.calcset.electric_polarization_matrix('lat')[0]  # the Born effective charges, variable cell
+      self.B_m_mu    = self.calcset.magnetic_polarization_matrix('ion')[0]   # the magnetic charges, climped cell
+      self.B_mu_j    = self.calcset.magnetic_polarization_matrix('lat')[0]   # the magnetic charges, variable cell
 
-    ## inverse the force-constant matrix K_{m,n}
-    #inv_B_m_n = invert_with_warning(self.B_m_n, self.calcset.TRANSLATIONAL_MODE_THRESHOLD,
-    #                                'Inverting force constant matrix resulted in %d soft modes', 3)      
+    # inverse the force-constant matrix K_{m,n}
+    inv_B_m_n = invert_with_warning(self.B_m_n, self.calcset.TRANSLATIONAL_MODE_THRESHOLD,
+                                    'Inverting force constant matrix resulted in %d soft modes', 3)      
 
-    #self.Bhat_alpha_beta = self.B_alpha_beta -    np.dot(self.B_m_alpha.T, np.dot(inv_B_m_n, self.B_m_alpha) )   # electric_susceptibility, climped cell
-    #self.Bhat_mu_nu      = self.B_mu_nu      -    np.dot(self.B_m_mu.T,    np.dot(inv_B_m_n, self.B_m_mu) )      # magnetic_susceptibility, climped cell
-    #self.Bhat_j_k        = self.B_j_k        -    np.dot(self.B_m_j.T,     np.dot(inv_B_m_n, self.B_m_j) )       # elastic tensor C_jk, climped cell 
-    #self.Bhat_alpha_mu   = self.B_alpha_mu   -    np.dot(self.B_m_alpha.T, np.dot(inv_B_m_n, self.B_m_mu) )      # magnetoelectric tensor, climped cell
-    #self.Bhat_alpha_j    = self.B_alpha_j    -    np.dot(self.B_m_j.T,     np.dot(inv_B_m_n, self.B_m_alpha) )   # piezoelectric tensor, climped cell
-    #self.Bhat_mu_j       = self.B_mu_j       -    np.dot(self.B_m_j.T,     np.dot(inv_B_m_n, self.B_m_mu) )      # piezomagnetic tensor, climped cell
+    self.Bhat_alpha_beta = self.B_alpha_beta -    np.dot(self.B_m_alpha.T, np.dot(inv_B_m_n, self.B_m_alpha) )   # electric_susceptibility, climped cell
+    self.Bhat_mu_nu      = self.B_mu_nu      -    np.dot(self.B_m_mu.T,    np.dot(inv_B_m_n, self.B_m_mu) )      # magnetic_susceptibility, climped cell
+    self.Bhat_j_k        = self.B_j_k        -    np.dot(self.B_m_j.T,     np.dot(inv_B_m_n, self.B_m_j) )       # elastic tensor C_jk, climped cell 
+    self.Bhat_alpha_mu   = self.B_alpha_mu   -    np.dot(self.B_m_alpha.T, np.dot(inv_B_m_n, self.B_m_mu) )      # magnetoelectric tensor, climped cell
+    self.Bhat_alpha_j    = self.B_alpha_j    -    np.dot(self.B_m_j.T,     np.dot(inv_B_m_n, self.B_m_alpha) )   # piezoelectric tensor, climped cell
+    self.Bhat_mu_j       = self.B_mu_j       -    np.dot(self.B_m_j.T,     np.dot(inv_B_m_n, self.B_m_mu) )      # piezomagnetic tensor, climped cell
 
-    #inv_B_j_k = invert_with_warning(self.Bhat_j_k, self.calcset.ROTATIONAL_MODE_THRESHOLD,
-    #                                'Inverting elastic constant matrix resulted in %d soft modes', 3)      
-    #
-    #self.Bgot_alpha_beta = self.Bhat_alpha_beta -    np.dot(self.Bhat_alpha_j.T, np.dot(inv_B_j_k, self.Bhat_alpha_j) ) # electric_susceptibility, variable cell
-    #self.Bgot_mu_nu      = self.Bhat_mu_nu      -    np.dot(self.Bhat_mu_j.T,    np.dot(inv_B_j_k, self.Bhat_mu_j) )    # magnetic_susceptibility, variable cell
-    #self.Bgot_alpha_mu   = self.Bhat_alpha_mu   -    np.dot(self.Bhat_alpha_j.T, np.dot(inv_B_j_k, self.Bhat_mu_j) )    # magnetoelectric tensor, variable cell
+    inv_B_j_k = invert_with_warning(self.Bhat_j_k, self.calcset.ROTATIONAL_MODE_THRESHOLD,
+                                    'Inverting elastic constant matrix resulted in %d soft modes', 3)      
+    
+    self.Bgot_alpha_beta = self.Bhat_alpha_beta -    np.dot(self.Bhat_alpha_j.T, np.dot(inv_B_j_k, self.Bhat_alpha_j) ) # electric_susceptibility, variable cell
+    self.Bgot_mu_nu      = self.Bhat_mu_nu      -    np.dot(self.Bhat_mu_j.T,    np.dot(inv_B_j_k, self.Bhat_mu_j) )    # magnetic_susceptibility, variable cell
+    self.Bgot_alpha_mu   = self.Bhat_alpha_mu   -    np.dot(self.Bhat_alpha_j.T, np.dot(inv_B_j_k, self.Bhat_mu_j) )    # magnetoelectric tensor, variable cell
 
 #  def born_charges(self):
 #    return -self.volume*self.B_m_alpha, "|e|"

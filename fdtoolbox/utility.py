@@ -226,3 +226,11 @@ def metro_dist( v1, v2 ):
   Helper function used in fixing "jumped ions" and problematic polarizations.
   """
   return abs(v1 - v2).max()
+
+def mat2str(m,mode=' % 7.4f'):
+  if len( m.shape ) == 1:
+    m = array([m])
+  if len( m.shape ) > 2:
+    m = m.reshape( m.shape[0], -1 )
+
+  return '\n'.join([' '.join([mode%col for col in row]) for row in array(m) ] )+'\n'

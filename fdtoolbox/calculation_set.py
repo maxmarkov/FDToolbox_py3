@@ -487,10 +487,10 @@ class calculation_set():
       return changed
         
     for calc in self._calculation_list:
-      #For some reason this does not work as expected and it's safer to just fix/recalculate all calculations
+      # Original comment: For some reason this does not work as expected and it's safer to just fix/recalculate all calculations
       #if fix_berry_phases(calc):
-        #p = calc.recalculate_polarization()
-        #self.debug('Corrected polarization %s = %f %f %f'%(calc.fileID,p[0,0],p[0,1],p[0,2]), LOG_ALLINFO)
+      #  p = calc.recalculate_polarization()
+      #  self.debug('Corrected polarization %s = %f %f %f'%(calc.fileID,p[0,0],p[0,1],p[0,2]), LOG_ALLINFO)
       fix_berry_phases(calc)
       p = calc.recalculate_polarization()
       #self.debug('Corrected polarization %s = %f %f %f'%(calc.fileID,p[0,0],p[0,1],p[0,2]), LOG_ALLINFO)
@@ -540,9 +540,12 @@ class calculation_set():
     volume calculations, where calculated energy is not be minimal with respect to lattice deformations 
     at the optimised structure.
     """
+    ground_state = self.groundstate.energy
     for calc in self._calculation_list:
       if re.match(pattern,calc.fileID):
         self.groundstate = calc
+        print(f'True ground state {ground_state} in {self.groundstate.name}')
+        print(f'New ground state {self.groundstate.energy} in {pattern.split("/")[-1]}')
         return
       
     self.debug("Cannot set groundstate to %s" % pattern, LOG_WARNING)
@@ -586,9 +589,9 @@ class calculation_set():
     it returns full generalised displacement matrix.
     """
     if mode == 'ion':
-      return np.mat(np.concatenate([ calc.position() - self.groundstate.position() for calc in self.calculations(calcset) ]))
+      return np.vstack([ calc.position() - self.groundstate.position() for calc in self.calculations(calcset) ])
     elif mode == 'lat':
-      return np.mat(np.concatenate([ (self.groundstate.recip_cell*calc.unit_cell - np.eye(3)).flatten(1) for calc in self.calculations(calcset) ]))
+      return np.vstack([ (np.dot(self.groundstate.recip_cell,calc.unit_cell) - np.eye(3)).flatten(1) for calc in self.calculations(calcset) ])
     else:
       return np.hstack([self.displacements('ion', calcset), self.displacements('lat', calcset)])
     
@@ -597,23 +600,23 @@ class calculation_set():
     Returns forces exerted on 'mode' subset of coordinates, as read from 'calcset' subset of all calculations. 
     In new formalism, all global properties are defined as per unit volume and that stresses are already represented like this.
     """
-    return np.mat(np.concatenate([ calc.force(mode) for calc in self.calculations(calcset)]))
+    return np.vstack([ calc.force(mode) for calc in self.calculations(calcset)])
   
   def magnetizations(self, calcset='all'):
     """
     Returns magnetizations read from 'calcset' subset of all calculations. 
     In new formalism, all global properties are defined as per unit volume
     """
-    return np.mat(np.concatenate([ c.magnetization for c in self.calculations(calcset)])) / self.groundstate.volume
+    return np.vstack([ c.magnetization for c in self.calculations(calcset)]) / self.groundstate.volume
   
   def magnetization_differences(self,calcset='all'):
     """
     Returns magnetization differences between calcset of calculation and the groundstate.
     """
     #if calcset == 'ion':
-    return np.mat(np.concatenate([ c.magnetization-self.groundstate.magnetization for c in self.calculations(calcset)]))
+    return np.vstack([ c.magnetization-self.groundstate.magnetization for c in self.calculations(calcset)])
     #elif calcset == 'lat':
-    #  return np.mat(np.concatenate([ c.magnetization*c.recip_cell*self.groundstate.unit_cell-self.groundstate.magnetization for c in self.calculations(calcset)]))
+    #  return np.array(np.concatenate([ c.magnetization*c.recip_cell*self.groundstate.unit_cell-self.groundstate.magnetization for c in self.calculations(calcset)]))
   
   def polarizations(self,calcset='all'):
     """
@@ -634,7 +637,7 @@ class calculation_set():
     if calcset=='ion':
       return (np.concatenate( [ calc.polarization-self.groundstate.polarization for calc in self.calculations(calcset) ] ))
     elif calcset=='lat':
-      return (np.concatenate( [ -(calc.berry_term()+calc.ev_recip-self.groundstate.berry_term()-self.groundstate.ev_recip)*self.groundstate.unit_cell/self.groundstate.volume for calc in self.calculations('lat') ] ))
+      return (np.concatenate( [ -np.dot((calc.berry_term()+calc.ev_recip-self.groundstate.berry_term()-self.groundstate.ev_recip),self.groundstate.unit_cell)/self.groundstate.volume for calc in self.calculations('lat') ] ))
     else:
       return(np.vstack([self.polarization_differences('ion'), self.polarization_differences('lat')]))
   
@@ -684,36 +687,35 @@ class calculation_set():
       mag_dif = self.magnetization_differences(mode)
       (mag_pol_mat, rs, rk, s) = np.linalg.lstsq( np.hstack( [ displacements, np.ones((displacements.shape[0],1)) ] ),
                                                   mag_dif, None )
-      residual = mag_pol_mat[-1,:]
-      #mag_pol_mat = mag_pol_mat[:-1.:] MM
-      mag_pol_mat = mag_pol_mat[:-1:]
+      residual = np.asarray(mag_pol_mat[-1,:])
+      mag_pol_mat = np.asarray(mag_pol_mat[:-1:])
       return(mag_pol_mat/self.groundstate.volume, residual)
     else:
       impl,ir = self.magnetic_polarization_matrix('ion')
       lmpl,lr = self.magnetic_polarization_matrix('lat')
       return (np.vstack([impl, lmpl]), ir+lr)
 
-  #def electric_polarization_matrix(self, mode='ion'):
-  #  """
-  #  Returns numerically computed derivative of polarization vector over general coordinates.
-  #  """
-  #  if mode == 'ion' or mode == 'lat':
-  #    displacements = self.displacements(mode, mode)
-  #    pol_dif = self.polarization_differences(mode)
-  #    # min || displacements*x - dP||^2
-  #    (el_pol_mat, rs, rk, s) = np.linalg.lstsq( np.hstack( [ displacements, np.ones((displacements.shape[0],1)) ] ),
-  #                                               pol_dif, None )
-  #    residual = el_pol_mat[-1,:]
-  #    el_pol_mat = el_pol_mat[:-1,:]
-  #  
-  #    if (mode == 'ion'):
-  #      return(el_pol_mat, residual)
-  #    else:
-  #      return(el_pol_mat, residual)
-  #  else:
-  #    iepl,ir = self.electric_polarization_matrix('ion')
-  #    lepl,lr = self.electric_polarization_matrix('lat')
-  #    return(np.vstack([iepl, lepl]), ir+lr)
+  def electric_polarization_matrix(self, mode='ion'):
+    """
+    Returns numerically computed derivative of polarization vector over general coordinates.
+    """
+    if mode == 'ion' or mode == 'lat':
+      displacements = self.displacements(mode, mode)
+      pol_dif = self.polarization_differences(mode)
+      # min || displacements*x - dP||^2
+      (el_pol_mat, rs, rk, s) = np.linalg.lstsq( np.hstack( [ displacements, np.ones((displacements.shape[0],1)) ] ),
+                                                 pol_dif, None )
+      residual = el_pol_mat[-1,:]
+      el_pol_mat = el_pol_mat[:-1,:]
+    
+      if (mode == 'ion'):
+        return(el_pol_mat, residual)
+      else:
+        return(el_pol_mat, residual)
+    else:
+      iepl,ir = self.electric_polarization_matrix('ion')
+      lepl,lr = self.electric_polarization_matrix('lat')
+      return(np.vstack([iepl, lepl]), ir+lr)
   
   def clear_lattice_constraints(self):
     """
