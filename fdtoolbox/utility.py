@@ -158,7 +158,7 @@ def saxis_rotation(saxis):
   Conversion from internal (reported by VASP) to cartesian coordinates for magnetic moment.
   See: https://www.vasp.at/wiki/index.php/SAXIS (mx_axis, my_axis, mz_axis) -> (mx, my, mz)
   """ 
-  return np.linalg.inv(inv_saxis_rotation(saxis))
+  return(np.linalg.inv(inv_saxis_rotation(saxis)))
 
 def safe_inv(matrix, threshold = 0, iterate_components = None):
   """
@@ -184,7 +184,7 @@ def safe_inv(matrix, threshold = 0, iterate_components = None):
     else:
       new_ee[i]=1./ee[i]
 
-  return vv*np.mat(np.diag(new_ee))*vv.T, skipcount, ee
+  return(vv*np.mat(np.diag(new_ee))*vv.T, skipcount, ee)
 
 def invert_with_warning(matrix, threshold, warning_msg, expected_skip):
   inv_m, skip, ee = safe_inv(matrix, threshold)
@@ -194,7 +194,7 @@ def invert_with_warning(matrix, threshold, warning_msg, expected_skip):
 #    loggable.debug('Eigenvalues of the matrix were:', LOG_ALLINFO)
 #    loggable.debug(mat2str( linalg.eig((matrix+matrix.T)/2.)[0], '%10.6f'), LOG_ALLINFO)
   
-  return inv_m                 
+  return(inv_m)                 
     
 #def argvtospecies( argv ):
 #  species = []
@@ -225,12 +225,11 @@ def metro_dist( v1, v2 ):
   """
   Helper function used in fixing "jumped ions" and problematic polarizations.
   """
-  return abs(v1 - v2).max()
+  return(abs(v1 - v2).max())
 
-def mat2str(m,mode=' % 7.4f'):
-  if len( m.shape ) == 1:
-    m = array([m])
-  if len( m.shape ) > 2:
-    m = m.reshape( m.shape[0], -1 )
-
-  return '\n'.join([' '.join([mode%col for col in row]) for row in array(m) ] )+'\n'
+def mat2str(m, mode=' % 7.4f'):
+  """
+  Print numpy array in a readable form 
+  """
+  array_str = '\n'.join([' '.join([mode%col for col in row]) for row in np.array(m)] )+'\n'
+  return(array_str)

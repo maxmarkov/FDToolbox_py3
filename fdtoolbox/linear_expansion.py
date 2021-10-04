@@ -118,13 +118,13 @@ class linear_expansion(): #(loggable):
 #                              'Inverting elastic constant matrix resulted in %d soft modes', 3)
 #    return 1000*sjk, "TPa**-1"  
   
-#  def magneto_electric_coupling(self, lattice=True):
-#    if lattice is True:
-#      rval = self.Bgot_alpha_mu
-#    else:
-#      rval = self.Bhat_alpha_mu
-#
-#    return -1e4*COUPLING_TO_GAUSS*rval, "1e-4 g.u."
+  def magneto_electric_coupling(self, lattice=True):
+    if lattice is True:
+      rval = self.Bgot_alpha_mu
+    else:
+      rval = self.Bhat_alpha_mu
+
+    return(-1e4*COUPLING_TO_GAUSS*rval, "1e-4 g.u.")
   
 #  def force_constant_matrix(self):
 #    return self.calcset.groundstate.volume*self.B_m_n, "eV Andstrom**-2  "

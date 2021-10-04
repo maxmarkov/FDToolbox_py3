@@ -23,7 +23,6 @@ print ('Using cache: %s' % usecache)
 
 print('Reading from directory: %s' % directory)
 
-# class 'fdtoolbox.calculation_set.calculation_set'
 cs=calculation_set.read_directory(directory, fdt, saxis, usecache)
 
 cs.set_ionic('.*/calc_.._.*[0123]')
@@ -43,14 +42,12 @@ set_common_options(cs, lin_exp, options)
 lin_exp.calculate_expansion_coefficients(update_from_calcset=True)
 
 chitens, units = lin_exp.electric_susceptibility(lattice = False)
-print('Dielectric tensor ionic contribution (%s)'%units)
-print(chitens)
-#print(mat2str( chitens ))
+print(f'Dielectric tensor ionic contribution {units}')
+print(mat2str(chitens))
 
 chitens, units = lin_exp.electric_susceptibility()
-print('Dielectric tensor ionic and cell contribution (%s)'%units)
-print(chitens)
-#print(mat2str( chitens ))
+print(f'Dielectric tensor ionic and cell contribution {units}')
+print(mat2str(chitens))
 
 #if options.decomp:
 ##  evals = linalg.eig(lin_exp.B_m_n)[0]
