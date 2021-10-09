@@ -94,10 +94,7 @@ class calculation():
     - self.berry_phase - berry phases of all strings in each of the directions (3xN 1)
     - self.polarization_quant - polarization quant for the calculation (3x3 e/A**2)
     - self.i_polarization_quant - inverse of polarization quant
-    TO DO: 1) numspin 2) check all variables with respect to the old code 3) new polarization 
     """
-    #filename = 
-
     self.berry_phase=3*[None]
     self.berry_ev=3*[None]
     self.berry_ion=3*[None]
@@ -500,8 +497,6 @@ class calculation_set():
     for calc in self._calculation_list:
       if re.match(pattern,calc.fileID):
         self.groundstate = calc
-        print(f'True ground state {ground_state} in {self.groundstate.name}')
-        print(f'New ground state {self.groundstate.energy} in {pattern.split("/")[-1]}')
         return
       
     self.debug("Cannot set groundstate to %s" % pattern, LOG_WARNING)
