@@ -82,7 +82,7 @@ class calculation():
      return(berry_ev)
       
   
-  def load_polarization(self, filename):
+  def load_polarization(self, path):
     """
     This function tries to read Berry phase calculations from three files:
     filename+'_berry_1' filename+'_berry_2' filename+'_berry_3'
@@ -96,7 +96,7 @@ class calculation():
     - self.i_polarization_quant - inverse of polarization quant
     TO DO: 1) numspin 2) check all variables with respect to the old code 3) new polarization 
     """
-    filename = filename[:-7]
+    #filename = 
 
     self.berry_phase=3*[None]
     self.berry_ev=3*[None]
@@ -109,7 +109,7 @@ class calculation():
 
     # Extract information from OUTCAR file in each of 3 directions.
     for kdirection in range(1,4):
-      fname = os.path.join(filename, 'Berry_%d/OUTCAR' % kdirection)
+      fname = os.path.join(path, 'Berry_%d/OUTCAR' % kdirection)
 
       if os.access( fname, os.R_OK ):
  
@@ -198,15 +198,24 @@ class calculation():
     
 
 
-  def load_from_outcar(self, filename, structure):
+  def load_from_outcar(self, path, structure, mode):
     """
     This function reads atom positions, unit cell, forces and stress tensor from the VASP
     OUTCAR file
+    path: 
+    structure: 
     """
+    if mode=='scf':
+       filename = os.path.join(path,'OUTCAR') 
+    elif mode=='nscf':
+       filename = os.path.join(path,'nscf_SOC/OUTCAR')
+    else:
+       raise Exception(f"Calculation mode {mode} is wrong. Must be scf or nscf")
+
     if os.access(filename, os.R_OK):
       outcar = Outcar(filename)
     else:
-      raise Exception("Missing OUTCAR file in {}".format(filaname))
+      raise Exception("Missing OUTCAR file in {}".format(filename))
       
     self.name = filename.split('/')[-2]
     print(self.name)
@@ -275,7 +284,7 @@ class calculation():
     self.get__magnetization()
 
     # POLARIZATION 
-    self.load_polarization(filename)
+    self.load_polarization(path)
     self.fileID = filename
 
     
@@ -378,7 +387,7 @@ class calculation_set():
     self._lattice_displacements_list=[]
   
   @classmethod
-  def read_directory(cls, dirname, fdt, saxis, usecache=False):
+  def read_directory(cls, dirname, fdt, saxis, usecache=False, mode='scf'):
     """
     Read the whole directory containing subdirectories with OUTCARS.
     This function fills in the self._calculation_list attribute.
@@ -402,13 +411,10 @@ class calculation_set():
     for f in fdt.structures_ion:
       path = os.path.join(dirname,f)
       if os.path.isdir(path):
-        fpath = os.path.join(path,'OUTCAR')
-        if os.access( fpath, os.R_OK ) or os.access( fpath+'.gz', os.R_OK ):
-          print(fpath)
-          c = calculation()
-          #cs.debug('Reading calculation from %s' % fpath, LOG_INFO)
-          c.load_from_outcar(fpath, fdt.structures_ion[f])
-          cs._calculation_list.append( c )
+        c = calculation()
+        #cs.debug('Reading calculation from %s' % fpath, LOG_INFO)
+        c.load_from_outcar(path, fdt.structures_ion[f], mode)
+        cs._calculation_list.append( c )
 
     me = 0.0
     for c in cs._calculation_list:
@@ -416,17 +422,6 @@ class calculation_set():
         me = c.energy
         cs.groundstate = c
     
-    # SUPERCELL PART
-    #supercell_definition = re.search("(SUPERCELL)\s+([^\s]+)", cs.groundstate.name)
-    #if supercell_definition:
-    #  print(supercell_definition.groups())
-    #  repetitions = re.match("([0-9]+)x([0-9]+)x([0-9]+)", supercell_definition.groups()[1])
-    #  if repetitions:
-    #    cs.expand_translational_symmetry([int(r) for r in repetitions.groups()])
-    #  else:
-    #    #TODO: load a file with translationlist?
-    #    cs.expand_translational_symmetry(xxx)
-        
     if usecache:
       F = open(dataname,'wb')
       pickle.dump(cs,F,-1)
@@ -495,45 +490,6 @@ class calculation_set():
       p = calc.recalculate_polarization()
       #self.debug('Corrected polarization %s = %f %f %f'%(calc.fileID,p[0,0],p[0,1],p[0,2]), LOG_ALLINFO)
     
-  #def try_polarizations_chain(self):
-  #  def align_berry_phases( ref_calc, dest_calc ):
-  #    for kdir in range(3):
-  #      if ref_calc.berry_phase[kdir].shape != dest_calc.berry_phase[kdir].shape:
-  #        self.debug("Cannot align berry phases", LOG_WARNING)
-  #      else:
-  #        #print "IN"
-  #        #print ref_calc.berry_phase[kdir]
-  #        #print dest_calc.berry_phase[kdir]
-  #        count = 0
-  #        for i in range(ref_calc.berry_phase[kdir].shape[0]):
-  #          while ref_calc.berry_phase[kdir][i,0] - dest_calc.berry_phase[kdir][i,0] > self.BPH_MAXDIST:
-  #            dest_calc.berry_phase[kdir][i,0] += self.BPH_CORRECTION
-  #            count+=1
-  #          while ref_calc.berry_phase[kdir][i,0] - dest_calc.berry_phase[kdir][i,0] < -self.BPH_MAXDIST:
-  #            dest_calc.berry_phase[kdir][i,0] -= self.BPH_CORRECTION
-  #            count+=1
-  #        if count > 0:
-  #          print 'Number of flips: %d'%count
-  #        #print "OUT"
-  #        #print dest_calc.berry_phase[kdir]
-  #        
-  #  def align_ions( ref_calc, dest_calc ):
-  #    for idx,atom in enumerate(dest_calc.atoms):
-  #      gs_atom = ref_calc.atoms[idx]
-  #      for dx,dy,dz in iterate_shifts():
-  #        new_atom = atom+[[dx,dy,dz]]*dest_calc.unit_cell
-  #        if metro_dist(new_atom, gs_atom) <= 0.5:
-  #          loggable.debug('    moving atom %d by %d,%d,%d' % (idx,dx,dy,dz),LOG_ALLINFO)
-  #          dest_calc.atoms[idx] = new_atom[0]
-  #  
-  #  self._calculation_list[0].recalculate_polarization()
-  #  for i in range(1,len(self._calculation_list)):
-  #    print "align", self._calculation_list[i-1].fileID, self._calculation_list[i].fileID
-  #    align_berry_phases(self._calculation_list[i-1],self._calculation_list[i])
-  #    align_ions(self._calculation_list[i-1],self._calculation_list[i])
-  #    self._calculation_list[i].recalculate_polarization()
-    
-
   def set_groundstate(self, pattern):
     """
     Set the self.groundstate attribute to a given file pattern. This is usefull for constant 
@@ -716,70 +672,3 @@ class calculation_set():
       iepl,ir = self.electric_polarization_matrix('ion')
       lepl,lr = self.electric_polarization_matrix('lat')
       return(np.vstack([iepl, lepl]), ir+lr)
-  
-  def clear_lattice_constraints(self):
-    """
-    Clear all imposed lattice distortion constraints.
-    """
-    if hasattr(self,'_lattice_constraint'):
-      del self._lattice_constraint
-      
-  def add_lattice_constraint(self, dir_plane_mat, flags=['xyshear','oopshear']):
-    """
-    Constrain the lattice from deforming in a given cartesian direction.
-    """
-    direction = np.mat(dir_plane_mat)
-    
-    if direction.shape[0] == 1:
-      # We have a vector, which defines uncompressible direction
-      direction /= np.sqrt(direction*direction.T)
-      strain = direction.T*direction
-    elif direction.shape[0] == 2:
-      # We have two vectors which define rigid plane
-      direction[0] /= np.sqrt(direction[0]*direction[0].T)
-      direction[1] /= np.sqrt(direction[1]*direction[1].T)
-      self.add_lattice_constraint(direction[0])                # XX
-      self.add_lattice_constraint(direction[1])                # YY
-      if 'xyshear' in flags:
-        self.add_lattice_constraint(direction[1].T*direction[0]) # YX
-        self.add_lattice_constraint(direction[0].T*direction[1]) # XY
-      out_of_plane = np.cross(direction[0],direction[1])
-      self.add_lattice_constraint(direction[0].T*out_of_plane) # XZ
-      self.add_lattice_constraint(direction[1].T*out_of_plane) # YZ
-      if 'oopshear' in flags:
-        self.add_lattice_constraint(out_of_plane.T*direction[0]) # ZX
-        self.add_lattice_constraint(out_of_plane.T*direction[1]) # ZY
-      return
-    elif direction.shape[0] == 3:
-      # We have directly strain component generalised direction
-      strain = direction
-      
-    strain = np.mat(strain.flatten(0))
-    constraint = strain.T*strain
-    
-    if not hasattr(self,'_lattice_constraint'):
-      self._lattice_constraint = mat(zeros((9,9)))
-      
-    self._lattice_constraint += constraint
-    
-  #def expand_translational_symmetry(self, supercell):
-  #  #FIXME!!!
-  #  # more bad things than I can really tell....
-  #  print self.groundstate.unit_cell
-  #  original_cell = self.groundstate.unit_cell / array([supercell, supercell, supercell]).T
-  #  print original_cell
-  #  
-  #  def shift_calc(calc, shift):
-  #    newcalc = copy.deepcopy(calc)
-  #    for i in range(calc.atoms.shape[0]):
-  #      newcalc.atoms[i,:] = calc.atoms[i,:]+shift
-  #    return newcalc
-  #
-  #  newcalclist = []
-  #  for i,j,k in iterate_all_indices(supercell):
-  #    shift = dot([i,j,k], original_cell)
-  #    for calc in self._calculation_list:
-  #      newcalclist.append(shift_calc(calc, shift))
-  #  
-  #  self._calculation_list = newcalclist
-  #  print mat2str(vstack([c.atoms for c in self._calculation_list]))

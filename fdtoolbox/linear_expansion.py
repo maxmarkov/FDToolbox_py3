@@ -17,9 +17,10 @@ class linear_expansion(): #(loggable):
        
       self.B_m_n     = self.calcset.force_constant_matrix('ion', 'ion')[0]  # force-constants matrix, climped cell
       self.B_j_k     = self.calcset.force_constant_matrix('lat', 'lat')[0]  # force-constants matrix, variable cell
-      
+
       self.B_m_j     = 0.5*( self.calcset.force_constant_matrix('lat', 'ion')[0]+ 
                              self.calcset.force_constant_matrix('ion', 'lat')[0].T ) # the symmetrized version of the internal strain tensor ^_{m,j} 
+
       # symmetrize the force constants
       if self.symmetrize:
         self.B_m_n     = 0.5*( self.B_m_n + self.B_m_n.T )
@@ -34,12 +35,11 @@ class linear_expansion(): #(loggable):
       
           self.B_m_n[i:i+3,i:i+3] -= asr
         
-  
-  
       self.B_m_alpha = -self.calcset.electric_polarization_matrix('ion')[0]  # the Born effective charges, climped cell
       self.B_alpha_j = -self.calcset.electric_polarization_matrix('lat')[0]  # the Born effective charges, variable cell
       self.B_m_mu    = self.calcset.magnetic_polarization_matrix('ion')[0]   # the magnetic charges, climped cell
       self.B_mu_j    = self.calcset.magnetic_polarization_matrix('lat')[0]   # the magnetic charges, variable cell
+
 
     # inverse the force-constant matrix K_{m,n}
     inv_B_m_n = invert_with_warning(self.B_m_n, self.calcset.TRANSLATIONAL_MODE_THRESHOLD,
@@ -59,11 +59,11 @@ class linear_expansion(): #(loggable):
     self.Bgot_mu_nu      = self.Bhat_mu_nu      -    np.dot(self.Bhat_mu_j.T,    np.dot(inv_B_j_k, self.Bhat_mu_j) )    # magnetic_susceptibility, variable cell
     self.Bgot_alpha_mu   = self.Bhat_alpha_mu   -    np.dot(self.Bhat_alpha_j.T, np.dot(inv_B_j_k, self.Bhat_mu_j) )    # magnetoelectric tensor, variable cell
 
-#  def born_charges(self):
-#    return -self.volume*self.B_m_alpha, "|e|"
-  
-#  def magnetic_strengths(self):
-#    return self.B_m_mu, "mu_B A**-1"
+  def born_charges(self):
+    return -self.volume*self.B_m_alpha, "|e|"
+ 
+  def magnetic_strengths(self):
+    return self.B_m_mu, "mu_B A**-1"
   
 #  def piezoelectric_stress_tensor(self, ionic=True):
 #    if ionic is True:

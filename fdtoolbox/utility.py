@@ -116,28 +116,6 @@ def tensor2voigt( tens, transform_directions = [[1,2]] ):
   else:
     return a    
 
-#def rotatetensor(tens, rot):
-#  """
-#  Rotate (general - matrix) third-rank tensor. 
-#  FIXME: Make it more general.
-#  """
-#  res = zeros(tens.shape)
-#  
-#  #for i,j,k,r,s,t in iterate_all_indices(tens.shape + res.shape):
-#  #  res[r,s,t] += rot[r,i]*rot[s,j]*rot[t,k]*tens[i,j,k]
-#  #return res
-#
-#  for indices in iterate_all_indices(tens.shape + res.shape):
-#    mult = 1.0
-#    left_indices = indices[len(indices)/2:]
-#    right_indices = indices[0:len(indices)/2]
-#    
-#    for i in range(len(left_indices)):
-#      mult *= rot[left_indices[i], right_indices[i] ]
-#    
-#    res[tuple(left_indices)] +=  mult*tens[tuple(right_indices)]
-#  return res
-
 def inv_saxis_rotation(saxis):
   """
   Conversion from cartesian to internal (reported by VASP) coordinates for magnetic moment.
@@ -196,16 +174,6 @@ def invert_with_warning(matrix, threshold, warning_msg, expected_skip):
   
   return(inv_m)                 
     
-#def argvtospecies( argv ):
-#  species = []
-#  for s in argv.split():
-#    ns = s.split('*')
-#    if len(ns) == 1:
-#      species.append(ns[0])
-#    else:
-#      species.extend( int(ns[0])*[ns[1]] )
-#  return species
-
 def add_common_options(parser):
   parser.add_option("-t", "--translational", action='store', type='string', dest='trans', help="Threshold for translational (accoustic) modes used when inverting force constant matrix (eV/angstroem**2).", metavar="VAL")
   parser.add_option("-r", "--rotational", action='store', type='string', dest='rotat', help="Threshold for rotational modes used when inverting elastic constant matrix (GPa).", metavar="VAL")

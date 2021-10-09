@@ -14,7 +14,7 @@ usecache = False
 options = {'trans': None, 'rotat': None, 'nocache': False, 'asr': False, 'decomp': False}
 arguments = []
 
-directory = '/globalscratch/ucl/naps/mmarkov/Eu4Sb2O_test' #'/globalscratch/ucl/naps/mmarkov/fdtoolbox'
+directory = '/globalscratch/ucl/naps/mmarkov/Eu4Sb2O_test'
 
 fdt = FDTcalculations(filename='/CECI/home/ucl/modl/mmarkov/tutorial_FDToolbox/reference_initial_files/POSCAR', disp_ion=0.005, disp_lattice=0.00)
 
@@ -23,7 +23,7 @@ print ('Using cache: %s' % usecache)
 
 print('Reading from directory: %s' % directory)
 
-cs=calculation_set.read_directory(directory, fdt, saxis, usecache)
+cs=calculation_set.read_directory(directory, fdt, saxis, usecache, 'scf')
 
 cs.set_ionic('.*/calc_.._.*[0123]')
 cs.set_lattice('.*/calc_00_...')
@@ -48,10 +48,3 @@ print(mat2str(chitens))
 chitens, units = lin_exp.electric_susceptibility()
 print(f'Dielectric tensor ionic and cell contribution {units}')
 print(mat2str(chitens))
-
-#if options.decomp:
-##  evals = linalg.eig(lin_exp.B_m_n)[0]
-#  print('enum\teval\tcontribution')
-#  for i in range(lin_exp.B_m_n.shape[0]):
-#    inv_B_m_n, _, ee = safe_inv( lin_exp.B_m_n, cs.TRANSLATIONAL_MODE_THRESHOLD, iterate_components = [i] )
-#    print('%d\t%f\t%s'%(i, ee[i]*cs.groundstate.volume, mat2str( ( EEAEV_TO_EPSILON0*dot(lin_exp.B_m_alpha.T, dot(inv_B_m_n, lin_exp.B_m_alpha) )).flatten() )[:-1] ))
