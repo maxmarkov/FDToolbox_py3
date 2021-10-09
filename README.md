@@ -31,6 +31,13 @@ The methodology for these calculations is described in the following references:
 
 ## Examples:
 
+We assume that POSCAR file is in the ROOT directory.
+
+Generate folders for the noSOC calculations: 
+```
+python3 examples/generate_nosoc.py
+```
+
 Compute the dielectric tensor:
 ```
 python3 examples/compute_dielectric.py

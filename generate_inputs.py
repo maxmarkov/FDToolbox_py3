@@ -76,7 +76,6 @@ def generate_old_polarization_folders(structures):
             # Note: calculations usualy are very sensetive to the choice of "NPPSTR" parameter. You might consider to reduce it.
             MPStaticSet.from_prev_calc(name, user_incar_settings={"LBERRY":True,"IGPAR":i+1,"ICHARG":2,"NPAR":2,"ALGO":"Fast","NPPSTR":6,"LAECHG":False,"LVHAR":False, "ISIF": 2}, user_kpoints_settings={"reciprocal_density": 500}).write_input(os.path.join(name,'Berry_'+str(i+1)))
             shutil.copy(os.path.join(name,'CHGCAR'), os.path.join(name,'Berry_'+str(i+1)))
-        #break
 
 def generate_new_polarization_folders(structures):
     """
@@ -85,7 +84,6 @@ def generate_new_polarization_folders(structures):
     for name in structures:
         MPStaticSet.from_prev_calc(name, user_incar_settings={"LCALCPOL":True,"LAECHG":False,"LVHAR":False, "ISIF": 2}, user_kpoints_settings={"reciprocal_density": 500}).write_input(os.path.join(name,'Berry_new'))
         shutil.copy(os.path.join(name,'CHGCAR'), os.path.join(name,'Berry_new'))
-        #break
 
 def generate_nscf_soc_folders(structures, saxis, user_incar):
     """
@@ -106,7 +104,6 @@ def generate_nscf_soc_folders(structures, saxis, user_incar):
         dic["LDAUL"]= list(dic["LDAUL"].values())
         Incar.from_dict(dic).write_file(os.path.join(name,'nscf_SOC/INCAR'))
         shutil.copy(os.path.join(name,'CHGCAR'), os.path.join(name,'nscf_SOC'))
-        #break
 
 
 
@@ -200,18 +197,6 @@ class FDTcalculations(object):
            generate_nscf_soc_folders(self.structures_lattice, saxis, {**user_incar, **user_incar_custom})
 
 
-####         STEP 1           ###
-# customize the default settings for INCAR file
-#user_incar_scf_custom = {"LDAUU":{"Eu":6.0},"LDAUL":{"Eu":3, "Sb":-1, "O":-1}}
-
-#fdt = FDTcalculations(filename='/home/ucl/modl/mmarkov/soft/FDToolbox_py3_dev/TEST_FOLDER/POSCAR', disp_ion=0.005, disp_lattice=0.00)
-#fdt.generate_scf(user_incar=user_incar_scf_custom)
-
-#folders = list(fdt.structures_ion.keys())
-#generate_submit_manneback(folders, subfolder='', nprocs = 16, path_to_exec="/home/ucl/modl/mmarkov/soft/vasp/vasp.5.4.1_couplageEM/bin/vasp_std")
-
-
-####         STEP 2           ###
 fdt = FDTcalculations(filename='/home/ucl/modl/mmarkov/soft/FDToolbox_py3_dev/TEST_FOLDER/POSCAR', disp_ion=0.005, disp_lattice=0.00)
 
 scf_completed = fdt.check_scf()
