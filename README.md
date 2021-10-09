@@ -6,19 +6,19 @@ dielectric, and magnetoelectric response properties of simple materials. The cod
 
 The methodology for these calculations is described in the following references:
 
-  Ab Initio Indications for Giant Magnetoelectric Effects Driven by
+  - Ab Initio Indications for Giant Magnetoelectric Effects Driven by
   Structural Softness
   Wojdel, Jacek C.; Iniguez, Jorge
   Physical Review Letters Vol: 105 ( 3 ) 037208 2010
   DOI: http://dx.doi.org/10.1103/PhysRevLett.105.037208
 
-  Magnetoelectric Response of Multiferroic BiFeO3 and Related Materials
+  - Magnetoelectric Response of Multiferroic BiFeO3 and Related Materials
   from First-Principles Calculations
   Wojdel, Jacek C.; Iniguez, Jorge
   Physical Review Letters Vol: 103 ( 26 ) 267205 2009
   DOI: http://dx.doi.org/10.1103/PhysRevLett.103.267205
 
-  First-Principles Approach to Lattice-Mediated Magnetoelectric Effects
+  - First-Principles Approach to Lattice-Mediated Magnetoelectric Effects
   Iniguez, Jorge
   Physical Review Letters Vol: 101 ( 11 ) 117201  2008
   DOI: http://dx.doi.org/10.1103/PhysRevLett.101.117201
