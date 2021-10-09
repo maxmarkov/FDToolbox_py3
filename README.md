@@ -39,18 +39,18 @@ python3 examples/generate_nosoc.py
 ```
 Run all calculations.
 
-**STEP 2**(*calculation*): Generate folders for the polarization (noSOC) and magnetization (SOC) calculations:
+**STEP 2** (*calculation*): Generate folders for the polarization (noSOC) and magnetization (SOC) calculations:
 ```
 python3 examples/compute_polarization_and_magnetization.py
 ```
 Run all calculations.
 
-**STEP 3**(*post-processing*): Compute the dielectric tensor:
+**STEP 3** (*post-processing*): Compute the dielectric tensor:
 ```
 python3 examples/compute_dielectric.py
 ```
 
-**STEP 4**(*post-processing*): Compute the magnetoelectric tensor:
+**STEP 4** (*post-processing*): Compute the magnetoelectric tensor:
 ```
 python3 examples/compute_magnetoelectric.py
 ```
