@@ -33,17 +33,24 @@ The methodology for these calculations is described in the following references:
 
 We assume that POSCAR file is in the ROOT directory.
 
-Generate folders for the noSOC calculations: 
+**STEP 1** (*calculation*): Generate folders for the noSOC calculations: 
 ```
 python3 examples/generate_nosoc.py
 ```
+Run all calculations.
 
-Compute the dielectric tensor:
+**STEP 2**(*calculation*): Generate folders for the polarization (noSOC) and magnetization (SOC) calculations:
+```
+python3 examples/compute_polarization_and_magnetization.py
+```
+Run all calculations.
+
+**STEP 3**(*post-processing*): Compute the dielectric tensor:
 ```
 python3 examples/compute_dielectric.py
 ```
 
-Compute the magnetoelectric tensor:
+**STEP 4**(*post-processing*): Compute the magnetoelectric tensor:
 ```
 python3 examples/compute_magnetoelectric.py
 ```
