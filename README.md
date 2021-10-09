@@ -28,3 +28,15 @@ The methodology for these calculations is described in the following references:
   **Note:** the code computes ion- and lattice-mediated contributions to the spin component of magneto-electric response. 
   It does not compute the orbital component and the electronic contribution to the spin component of magneto-electric 
   response. 
+
+## Examples:
+
+Compute the dielectric tensor:
+```
+python3 examples/compute_dielectric.py
+```
+
+Compute the magnetoelectric tensor:
+```
+python3 examples/compute_magnetoelectric.py
+```
