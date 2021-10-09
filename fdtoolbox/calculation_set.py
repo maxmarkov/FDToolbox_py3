@@ -204,8 +204,10 @@ class calculation():
     """
     if mode=='scf':
        filename = os.path.join(path,'OUTCAR') 
+       self.name = filename.split('/')[-2]
     elif mode=='nscf':
        filename = os.path.join(path,'nscf_SOC/OUTCAR')
+       self.name = filename.split('/')[-3]
     else:
        raise Exception(f"Calculation mode {mode} is wrong. Must be scf or nscf")
 
@@ -214,7 +216,6 @@ class calculation():
     else:
       raise Exception("Missing OUTCAR file in {}".format(filename))
       
-    self.name = filename.split('/')[-2]
     print(self.name)
  
     # ATOMIC PROPERTIES
