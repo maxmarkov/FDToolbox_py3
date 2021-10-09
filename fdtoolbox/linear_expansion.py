@@ -65,58 +65,58 @@ class linear_expansion(): #(loggable):
   def magnetic_strengths(self):
     return self.B_m_mu, "mu_B A**-1"
   
-#  def piezoelectric_stress_tensor(self, ionic=True):
-#    if ionic is True:
-#      rval = self.Bhat_alpha_j
-#    else:
-#      rval = self.B_alpha_j
-#    return -EA2_TO_CM2*rval, "C m**-2"
-    
-#  def piezoelectric_strain_tensor(self, ionic=True):
-#    if ionic is True:
-#      sjk = invert_with_warning(self.Bhat_j_k, self.calcset.ROTATIONAL_MODE_THRESHOLD,
-#                              'Inverting elastic constant matrix resulted in %d soft modes', 3)      
-#      eaj= self.Bhat_alpha_j
-#    else:
-#      sjk = invert_with_warning(self.B_j_k, self.calcset.ROTATIONAL_MODE_THRESHOLD,
-#                              'Inverting elastic constant matrix resulted in %d soft modes', 3)      
-#      eaj= self.B_alpha_j
-#      
-#    return -1000*EA2_TO_CM2*dot(sjk, eaj)/EVA3_TO_GPA, "pC N**-1"
-  
-#  def piezomagnetic_stress_tensor(self, ionic=True):
-#    if ionic is True:
-#      rval = self.Bhat_mu_j
-#    else:
-#      rval = self.B_mu_j
-#      
-#    return -BMA3_TO_AM*rval, "A m**-1"
-    
-#  def piezomagnetic_strain_tensor(self, ionic=True):
-#    if ionic is True:
-#      sjk = invert_with_warning(self.Bhat_j_k, self.calcset.ROTATIONAL_MODE_THRESHOLD,
-#                                'Inverting elastic constant matrix resulted in %d soft modes', 3)    
-#      mmj = self.Bhat_mu_j
-#    else:
-#      sjk = invert_with_warning(self.B_j_k, self.calcset.ROTATIONAL_MODE_THRESHOLD,
-#                                'Inverting elastic constant matrix resulted in %d soft modes', 3)    
-#      mmj = self.B_mu_j
-#       
-#    return -BMEV_TO_T*dot(sjk, mmj), "T-1"
-    
-#  def elastic_tensor(self, ionic=True):
-#    if ionic is True:
-#      rval = self.Bhat_j_k
-#    else:
-#      rval = self.B_j_k
-#    return EVA3_TO_GPA*rval, "GPa" 
-    
-#  def compliance_tensor(self, ionic=True):
-#    # compliance tensor is an inverted elastic tensor
-#    cjk = self.elastic_tensor(ionic)[0]
-#    sjk = invert_with_warning(cjk, self.calcset.ROTATIONAL_MODE_THRESHOLD*EVA3_TO_GPA,
-#                              'Inverting elastic constant matrix resulted in %d soft modes', 3)
-#    return 1000*sjk, "TPa**-1"  
+  def piezoelectric_stress_tensor(self, ionic=True):
+    if ionic is True:
+      rval = self.Bhat_alpha_j
+    else:
+      rval = self.B_alpha_j
+    return -EA2_TO_CM2*rval, "C m**-2"
+   
+  #def piezoelectric_strain_tensor(self, ionic=True):
+  #  if ionic is True:
+  #    sjk = invert_with_warning(self.Bhat_j_k, self.calcset.ROTATIONAL_MODE_THRESHOLD,
+  #                            'Inverting elastic constant matrix resulted in %d soft modes', 3)      
+  #    eaj= self.Bhat_alpha_j
+  #  else:
+  #    sjk = invert_with_warning(self.B_j_k, self.calcset.ROTATIONAL_MODE_THRESHOLD,
+  #                            'Inverting elastic constant matrix resulted in %d soft modes', 3)      
+  #    eaj= self.B_alpha_j
+  #    
+  #  return -1000*EA2_TO_CM2*dot(sjk, eaj)/EVA3_TO_GPA, "pC N**-1"
+ 
+  def piezomagnetic_stress_tensor(self, ionic=True):
+    if ionic is True:
+      rval = self.Bhat_mu_j
+    else:
+      rval = self.B_mu_j
+      
+    return -BMA3_TO_AM*rval, "A m**-1"
+   
+  #def piezomagnetic_strain_tensor(self, ionic=True):
+  #  if ionic is True:
+  #    sjk = invert_with_warning(self.Bhat_j_k, self.calcset.ROTATIONAL_MODE_THRESHOLD,
+  #                              'Inverting elastic constant matrix resulted in %d soft modes', 3)    
+  #    mmj = self.Bhat_mu_j
+  #  else:
+  #    sjk = invert_with_warning(self.B_j_k, self.calcset.ROTATIONAL_MODE_THRESHOLD,
+  #                              'Inverting elastic constant matrix resulted in %d soft modes', 3)    
+  #    mmj = self.B_mu_j
+  #     
+  #  return -BMEV_TO_T*dot(sjk, mmj), "T-1"
+   
+  def elastic_tensor(self, ionic=True):
+    if ionic is True:
+      rval = self.Bhat_j_k
+    else:
+      rval = self.B_j_k
+    return EVA3_TO_GPA*rval, "GPa" 
+   
+  #def compliance_tensor(self, ionic=True):
+  #  # compliance tensor is an inverted elastic tensor
+  #  cjk = self.elastic_tensor(ionic)[0]
+  #  sjk = invert_with_warning(cjk, self.calcset.ROTATIONAL_MODE_THRESHOLD*EVA3_TO_GPA,
+  #                            'Inverting elastic constant matrix resulted in %d soft modes', 3)
+  #  return 1000*sjk, "TPa**-1"  
   
   def magneto_electric_coupling(self, lattice=True):
     if lattice is True:
@@ -126,8 +126,8 @@ class linear_expansion(): #(loggable):
 
     return(-1e4*COUPLING_TO_GAUSS*rval, "1e-4 g.u.")
   
-#  def force_constant_matrix(self):
-#    return self.calcset.groundstate.volume*self.B_m_n, "eV Andstrom**-2  "
+  def force_constant_matrix(self):
+    return self.calcset.groundstate.volume*self.B_m_n, "eV Andstrom**-2  "
   
   def electric_susceptibility(self, lattice=True):
     if lattice is True:
@@ -136,9 +136,9 @@ class linear_expansion(): #(loggable):
       rval = self.Bhat_alpha_beta
     return(-EEAEV_TO_EPSILON0*rval, "epsilon0")
       
-#  def magnetic_susceptibility(self, lattice=True):
-#    if lattice is True:
-#      rval = self.Bgot_mu_nu
-#    else:
-#      rval = self.Bhat_mu_nu
-#    return -1e8*BM2A3EV_TO_1MU0*rval, "1e-8 mu0**-1"
+  def magnetic_susceptibility(self, lattice=True):
+    if lattice is True:
+      rval = self.Bgot_mu_nu
+    else:
+      rval = self.Bhat_mu_nu
+    return -1e8*BM2A3EV_TO_1MU0*rval, "1e-8 mu0**-1"

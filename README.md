@@ -24,12 +24,12 @@ The methodology for these calculations is described in the following references:
   DOI: http://dx.doi.org/10.1103/PhysRevLett.101.117201
   
   These articles should be cited if you use this code. 
-  
+
   **Note:** the code computes ion- and lattice-mediated contributions to the spin component of magneto-electric response. 
   It does not compute the orbital component and the electronic contribution to the spin component of magneto-electric 
   response. 
 
-## Examples:
+## Computational procedure (example):
 
 We assume that POSCAR file is in the ROOT directory.
 
