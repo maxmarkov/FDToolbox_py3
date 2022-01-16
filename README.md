@@ -1,4 +1,4 @@
-# FDToolbox_py3
+# Finite Differences Toolbox for Magneto-Electric coupling
 
 Python3 re-implementation of [Finite Differences Toolbox](https://github.com/jcwojdel/FDToolbox) for calculation of magnetic, 
 dielectric, and magnetoelectric response properties of simple materials. The code is interfaced with [Pymatgen](https://pymatgen.org/) 
