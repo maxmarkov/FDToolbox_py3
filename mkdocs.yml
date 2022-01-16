@@ -1,0 +1,14 @@
+site_name: FD Toolbox - py3
+docs_dir: "docs"
+repo_url: https://github.com/maxmarkov/FDToolbox_py3
+nav:
+  - Documentation:
+      - Overview:
+          - What is FDToolBox?: index.md
+          - Features: overview/Theory.md
+          - Roadmap: overview/Implementation.md
+      - Basics:
+          - Introduction: basics/Introduction.md
+      - Concepts:
+          - Structures and Processes: concepts/Structure_and_Processes.md
+  - Contribute: contribute/index.md
