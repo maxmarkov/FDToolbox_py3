@@ -1,10 +1,12 @@
 # FDToolbox_py3
 
-![alt text](magnetoelectricity_diagram.png)
-
 Python3 re-implementation of [Finite Differences Toolbox](https://github.com/jcwojdel/FDToolbox) for calculation of magnetic, 
 dielectric, and magnetoelectric response properties of simple materials. The code is interfaced with [Pymatgen](https://pymatgen.org/) 
 (Python Materials Genomics) library to facilitate pre- and post-processing.
+
+<p align="center">
+  <img src="magnetoelectricity_diagram.png" width="600" alt="accessibility text">
+</p>
 
 The methodology for these calculations is described in the following references:
 
